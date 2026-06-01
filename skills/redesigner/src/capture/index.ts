@@ -12,6 +12,8 @@ import { login } from "./login.js";
 import { crawl } from "./crawl.js";
 import { capturePage, type PageArtifacts } from "./page-capture.js";
 import { CssCollector } from "./css-collector.js";
+import { AssetCollector } from "./asset-collector.js";
+import { rewriteCapturedAssets } from "./asset-rewrite.js";
 import { extractFineDetails } from "./fine-details.js";
 import { detectLogo } from "./logo.js";
 import { buildTokens } from "./tokens.js";
@@ -27,6 +29,7 @@ export interface Manifest {
   pages: { url: string; slug: string; title: string }[];
   skippedDestructive: { url: string; reason: string }[];
   cssSheets: number;
+  assetsDownloaded: number;
   logoCandidates: number;
   warnings: string[];
 }
@@ -50,6 +53,8 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
   const session: Session = await launchSession(config);
   const css = new CssCollector();
   css.attach(session.context);
+  const assets = new AssetCollector(config.outAbs);
+  assets.attach(session.context);
 
   const captured: PageArtifacts[] = [];
 
@@ -66,6 +71,7 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
         captured,
         skipped: [],
         cssSheets: 0,
+        assetsDownloaded: 0,
         logoCandidates: 0,
         warnings,
       });
@@ -94,6 +100,20 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
     // Escribir todas las hojas de estilo colectadas por red.
     const sheetNames = await css.writeAll(path.join(config.outAbs, "css"));
     const combinedCss = css.combinedCss();
+
+    // Reescribir HTML/CSS guardados → assets locales (offline) + <base> fallback.
+    try {
+      await rewriteCapturedAssets(
+        config.outAbs,
+        captured.map((p) => ({ html: p.html, url: p.url, slug: p.slug })),
+        sheetNames,
+        assets.map(),
+        warnings,
+      );
+    } catch (err) {
+      warnings.push(`reescritura assets: ${String(err).slice(0, 120)}`);
+    }
+    warnings.push(...assets.getWarnings());
 
     // Detalles finos (hover/focus/transitions/keyframes) sobre la primera página.
     try {
@@ -129,11 +149,12 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
       captured,
       skipped,
       cssSheets: sheetNames.length,
+      assetsDownloaded: assets.count(),
       logoCandidates: logoCount,
       warnings,
     });
 
-    log.success(`Artefactos en: ${config.outAbs}`);
+    log.success(`Artefactos en: ${config.outAbs} (${assets.count()} assets)`);
   } finally {
     await closeSession(session);
   }
@@ -147,6 +168,7 @@ async function writeManifest(
     captured: PageArtifacts[];
     skipped: { url: string; reason: string }[];
     cssSheets: number;
+    assetsDownloaded: number;
     logoCandidates: number;
     warnings: string[];
   },
@@ -160,6 +182,7 @@ async function writeManifest(
     pages: data.captured.map((p) => ({ url: p.url, slug: p.slug, title: p.title })),
     skippedDestructive: data.skipped,
     cssSheets: data.cssSheets,
+    assetsDownloaded: data.assetsDownloaded,
     logoCandidates: data.logoCandidates,
     warnings: data.warnings,
   };
