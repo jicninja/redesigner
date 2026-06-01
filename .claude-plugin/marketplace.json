@@ -1,16 +1,16 @@
 {
-  "name": "redisgner",
+  "name": "redesigner",
   "owner": {
     "name": "jicninja",
     "url": "https://github.com/jicninja"
   },
   "metadata": {
-    "description": "Marketplace del skill redisgner: relevar y rediseñar sitios con Claude.",
+    "description": "Marketplace del skill redesigner: relevar y rediseñar sitios con Claude.",
     "version": "0.1.0"
   },
   "plugins": [
     {
-      "name": "redisgner",
+      "name": "redesigner",
       "source": "./",
       "description": "Releva una web/app con Playwright (login MANUAL, solo lectura), audita la UX y orquesta un rediseño con Claude (React + Tailwind + Framer Motion), con export a mock HTML, Figma y Pencil.",
       "version": "0.1.0",
@@ -18,7 +18,7 @@
         "name": "jicninja",
         "url": "https://github.com/jicninja"
       },
-      "homepage": "https://github.com/jicninja/redisgner",
+      "homepage": "https://github.com/jicninja/redesigner",
       "license": "MIT",
       "keywords": [
         "redesign",

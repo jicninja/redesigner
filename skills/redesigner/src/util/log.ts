@@ -4,7 +4,7 @@ import { consola } from "consola";
  * Logger compartido. Nunca debe recibir credenciales: enmascará cualquier
  * valor sensible antes de loguear con `redact`.
  */
-export const log = consola.withTag("redisgner");
+export const log = consola.withTag("redesigner");
 
 /** Enmascara una credencial para que sea seguro mostrarla en logs. */
 export function redact(value: string | undefined | null): string {

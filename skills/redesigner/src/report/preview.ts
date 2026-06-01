@@ -35,7 +35,7 @@ export async function writePreview(
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>redisgner · preview — ${escapeHtml(meta.url)}</title>
+<title>redesigner · preview — ${escapeHtml(meta.url)}</title>
 <style>
   :root { color-scheme: light dark; }
   body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 24px; background: #0b0b0c; color: #e8e8ea; }

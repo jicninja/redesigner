@@ -19,7 +19,7 @@ const viewportSchema = z
 export const captureFlagsSchema = z.object({
   url: z.string().url("--url debe ser una URL válida (incluí https://)"),
   loginUrl: z.string().url().optional(),
-  out: z.string().default("./redisgner-artifacts"),
+  out: z.string().default("./redesigner-artifacts"),
   maxPages: z.coerce.number().int().positive().max(500).default(25),
   viewport: viewportSchema.prefault("1440x900"),
   headless: z.coerce.boolean().default(true),

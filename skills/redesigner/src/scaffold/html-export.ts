@@ -44,7 +44,7 @@ ${theme}
   </header>
   <main class="mx-auto max-w-5xl px-6 py-16">
     <h1 class="text-4xl font-bold tracking-tight">Rediseño</h1>
-    <p class="mt-4 text-lg opacity-80">Mock estático generado por redisgner. Editá a mano o importá a Figma con html.to.design.</p>
+    <p class="mt-4 text-lg opacity-80">Mock estático generado por redesigner. Editá a mano o importá a Figma con html.to.design.</p>
     <div class="mt-8 flex gap-4">
       <button class="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-surface hover:opacity-90">Primario</button>
       <button class="rounded-lg border border-black/20 px-5 py-2.5 text-sm font-medium hover:bg-black/5">Secundario</button>

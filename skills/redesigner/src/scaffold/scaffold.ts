@@ -202,7 +202,7 @@ export function App() {
           Rediseño
         </motion.h1>
         <motion.p variants={fadeUp} className="mt-4 text-lg opacity-80">
-          Base generada por redisgner. Reemplazá este contenido siguiendo
+          Base generada por redesigner. Reemplazá este contenido siguiendo
           reports/redesign-brief.md.
         </motion.p>
         <motion.div variants={fadeUp} className="mt-8 flex gap-4">
@@ -337,7 +337,7 @@ export function ${comp}() {
 
   await w(
     "README.md",
-    `# Rediseño (generado por redisgner)
+    `# Rediseño (generado por redesigner)
 
 Base **React 19 + Vite 8 + Tailwind v4 + Framer Motion (motion@12)**.
 
@@ -351,7 +351,7 @@ npm run dev
 - Componentes base en \`src/components/\`, páginas stub en \`src/pages/\`.
 - Logo: poné el rediseñado en \`src/assets/\`.
 
-Completá componentes y páginas siguiendo \`../redisgner-artifacts/reports/redesign-brief.md\`.
+Completá componentes y páginas siguiendo \`../redesigner-artifacts/reports/redesign-brief.md\`.
 `,
   );
 }

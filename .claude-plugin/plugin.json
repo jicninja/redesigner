@@ -1,13 +1,13 @@
 {
-  "name": "redisgner",
+  "name": "redesigner",
   "version": "0.1.0",
   "description": "Releva una web/app con Playwright (login MANUAL, solo lectura), audita la UX y orquesta un rediseño con Claude (React + Tailwind + Framer Motion), con export a mock HTML, Figma y Pencil.",
   "author": {
     "name": "jicninja",
     "url": "https://github.com/jicninja"
   },
-  "homepage": "https://github.com/jicninja/redisgner",
-  "repository": "https://github.com/jicninja/redisgner",
+  "homepage": "https://github.com/jicninja/redesigner",
+  "repository": "https://github.com/jicninja/redesigner",
   "license": "MIT",
   "keywords": [
     "redesign",

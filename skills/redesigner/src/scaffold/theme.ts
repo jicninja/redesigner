@@ -11,7 +11,7 @@ function clean(v: string): string {
  */
 export function tokensToThemeCss(tokens: DesignTokens): string {
   const lines: string[] = [];
-  lines.push("/* Generado por redisgner desde tokens.json del sitio original.");
+  lines.push("/* Generado por redesigner desde tokens.json del sitio original.");
   lines.push("   Ajustá los roles a mano: estos son los valores MÁS FRECUENTES,");
   lines.push("   no necesariamente los semánticamente correctos. */");
   lines.push("@theme {");

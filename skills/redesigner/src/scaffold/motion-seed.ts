@@ -26,7 +26,7 @@ export function buildMotionLib(
   return `import type { Variants, Transition } from "motion/react";
 
 /*
- * Variants de movimiento sembradas por redisgner desde el sitio original.
+ * Variants de movimiento sembradas por redesigner desde el sitio original.
  * Duración media de transiciones detectada: ${avgDur}s.
  * @keyframes detectados en el original: ${keyframeNames}.
  * Ajustá/expandí según el brief de rediseño.

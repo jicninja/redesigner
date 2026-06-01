@@ -6,7 +6,7 @@ import { log } from "../src/util/log.js";
 const program = new Command();
 
 program
-  .name("redisgner")
+  .name("redesigner")
   .description(
     "Releva una web con Playwright (solo lectura) y prepara su rediseño.",
   );
@@ -16,7 +16,7 @@ program
   .description("Loguea, crawlea (no destructivo) y guarda artefactos del sitio.")
   .requiredOption("--url <url>", "URL del sitio a relevar")
   .option("--login-url <url>", "URL de login si difiere de --url")
-  .option("--out <dir>", "directorio de salida", "./redisgner-artifacts")
+  .option("--out <dir>", "directorio de salida", "./redesigner-artifacts")
   .option("--max-pages <n>", "máximo de páginas a crawlear", "25")
   .option("--viewport <WxH>", "tamaño del viewport", "1440x900")
   .option("--no-headless", "abrir el navegador (necesario si el sitio pide login: es manual)")
@@ -45,11 +45,11 @@ program
 program
   .command("scaffold")
   .description("Genera el proyecto base del rediseño (React + Tailwind + motion).")
-  .requiredOption("--out <dir>", "directorio del proyecto (donde está redisgner-artifacts)")
+  .requiredOption("--out <dir>", "directorio del proyecto (donde está redesigner-artifacts)")
   .option(
     "--artifacts <dir>",
     "directorio de artefactos",
-    "./redisgner-artifacts",
+    "./redesigner-artifacts",
   )
   .option("--target <target>", "react | html", "react")
   .action(async (opts) => {

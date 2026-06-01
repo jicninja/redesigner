@@ -1,5 +1,5 @@
 {
-  "name": "redisgner",
+  "name": "redesigner",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "bin": {
-    "redisgner": "bin/capture.ts"
+    "redesigner": "bin/capture.ts"
   },
   "scripts": {
     "capture": "tsx bin/capture.ts capture",
