@@ -1,8 +1,8 @@
 import type { DesignTokens } from "../capture/tokens.js";
 
 /**
- * Convierte los design tokens a formato W3C Design Tokens / Tokens Studio,
- * importable a Figma con el plugin "Tokens Studio".
+ * Converts the design tokens to the W3C Design Tokens / Tokens Studio format,
+ * importable into Figma with the "Tokens Studio" plugin.
  */
 export function tokensToFigma(tokens: DesignTokens): unknown {
   const color: Record<string, { value: string; type: "color" }> = {};

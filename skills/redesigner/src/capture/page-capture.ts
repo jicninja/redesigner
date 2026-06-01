@@ -2,7 +2,7 @@ import path from "node:path";
 import type { Page } from "playwright";
 import { writeFileSafe, writeJson, slugFromPathname } from "../util/fs.js";
 
-/** Propiedades de computed style que aportan al "design system". */
+/** Computed style properties that contribute to the "design system". */
 const STYLE_PROPS = [
   "color",
   "background-color",
@@ -25,7 +25,7 @@ const STYLE_PROPS = [
   "animation",
 ];
 
-/** Selectores representativos que se muestrean por página. */
+/** Representative selectors sampled per page. */
 const SAMPLE_SELECTORS = [
   "body",
   "header",
@@ -61,7 +61,7 @@ export interface PageArtifacts {
   html: string;
 }
 
-/** Hace scroll para disparar contenido lazy, con tope de iteraciones. */
+/** Scrolls to trigger lazy content, with an iteration cap. */
 async function autoScroll(page: Page, maxSteps = 12): Promise<void> {
   await page.evaluate(async (steps: number) => {
     await new Promise<void>((resolve) => {
@@ -83,10 +83,10 @@ async function autoScroll(page: Page, maxSteps = 12): Promise<void> {
 }
 
 /**
- * Antes de serializar el HTML, normaliza a URL ABSOLUTA las referencias a
- * assets (img.src, source/img srcset, link.href). Así el HTML guardado matchea
- * el `Map` del AssetCollector (que tiene URLs absolutas) para la reescritura por
- * texto. Las propiedades `.src`/`.href` ya devuelven la URL absoluta resuelta.
+ * Before serializing the HTML, normalizes asset references to ABSOLUTE URLs
+ * (img.src, source/img srcset, link.href). This way the saved HTML matches the
+ * AssetCollector's `Map` (which holds absolute URLs) for text-based rewriting.
+ * The `.src`/`.href` properties already return the resolved absolute URL.
  */
 async function absolutizeAssetUrls(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -121,7 +121,7 @@ async function absolutizeAssetUrls(page: Page): Promise<void> {
   });
 }
 
-/** CSS inline (<style>, atributos style) + cssRules same-origin accesibles. */
+/** Inline CSS (<style>, style attributes) + accessible same-origin cssRules. */
 async function collectInlineCss(page: Page): Promise<string> {
   return page.evaluate(() => {
     const parts: string[] = [];
@@ -130,17 +130,17 @@ async function collectInlineCss(page: Page): Promise<string> {
       .forEach((s) => parts.push(s.textContent ?? ""));
     for (const sheet of Array.from(document.styleSheets)) {
       try {
-        const rules = sheet.cssRules; // lanza si es cross-origin
+        const rules = sheet.cssRules; // throws if cross-origin
         for (const r of Array.from(rules)) parts.push(r.cssText);
       } catch {
-        /* cross-origin: ya se captura por interceptación de red */
+        /* cross-origin: already captured via network interception */
       }
     }
     return parts.filter(Boolean).join("\n");
   });
 }
 
-/** Muestrea computed styles de elementos representativos. */
+/** Samples computed styles of representative elements. */
 async function sampleComputedStyles(
   page: Page,
 ): Promise<Record<string, Record<string, string>[]>> {
@@ -170,8 +170,8 @@ async function sampleComputedStyles(
 }
 
 /**
- * Captura una página: scroll lazy, screenshots full+viewport, HTML, CSS inline
- * y muestreo de computed styles. El CSS de red lo junta el CssCollector aparte.
+ * Captures a page: lazy scroll, full+viewport screenshots, HTML, inline CSS
+ * and computed-style sampling. Network CSS is gathered separately by CssCollector.
  */
 export async function capturePage(
   page: Page,
@@ -191,11 +191,11 @@ export async function capturePage(
   });
   await page.screenshot({ path: path.join(outAbs, screenshotViewport) });
 
-  // Absolutizar refs a assets para que el HTML guardado matchee el AssetCollector.
+  // Absolutize asset refs so the saved HTML matches the AssetCollector.
   try {
     await absolutizeAssetUrls(page);
   } catch {
-    /* no aborta la captura si falla */
+    /* doesn't abort the capture if it fails */
   }
 
   const html = await page.content();

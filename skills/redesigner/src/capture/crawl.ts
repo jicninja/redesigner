@@ -9,8 +9,8 @@ export interface RawLink {
 }
 
 /**
- * Extrae los links navegables del DOM. SOLO mira `<a href>` — no toca botones
- * ni dispara acciones (crawler de lectura).
+ * Extracts navigable links from the DOM. ONLY looks at `<a href>` — it does not
+ * touch buttons or trigger actions (read-only crawler).
  */
 export async function extractLinks(page: Page): Promise<RawLink[]> {
   return page.evaluate(() => {
@@ -24,7 +24,7 @@ export async function extractLinks(page: Page): Promise<RawLink[]> {
 }
 
 export interface CrawlCallbacks {
-  /** Se llama por cada página visitada; debe capturar artefactos. */
+  /** Called for each visited page; should capture artifacts. */
   onPage: (page: Page, url: string) => Promise<void>;
 }
 
@@ -34,8 +34,8 @@ export interface CrawlResult {
 }
 
 /**
- * BFS same-origin, estrictamente de solo lectura. Navega por URL directa
- * (`page.goto`) sobre los `<a href>` que pasan el filtro no-destructivo.
+ * Same-origin BFS, strictly read-only. Navigates by direct URL
+ * (`page.goto`) over the `<a href>` links that pass the non-destructive filter.
  */
 export async function crawl(
   page: Page,
@@ -58,7 +58,7 @@ export async function crawl(
       });
       await page.waitForLoadState("networkidle", { timeout: opts.pageTimeout }).catch(() => {});
     } catch (err) {
-      skipped.push({ url: current, reason: `navegación falló: ${String(err).slice(0, 80)}` });
+      skipped.push({ url: current, reason: `navigation failed: ${String(err).slice(0, 80)}` });
       continue;
     }
 
@@ -68,10 +68,10 @@ export async function crawl(
     try {
       await cb.onPage(page, current);
     } catch (err) {
-      log.warn(`captura falló en ${current}: ${String(err).slice(0, 120)}`);
+      log.warn(`capture failed at ${current}: ${String(err).slice(0, 120)}`);
     }
 
-    // Recolectar y filtrar links (no destructivos, same-origin).
+    // Collect and filter links (non-destructive, same-origin).
     let links: RawLink[] = [];
     try {
       links = await extractLinks(page);
@@ -85,7 +85,7 @@ export async function crawl(
         aria: link.aria,
       });
       if (!decision.follow) {
-        if (decision.reason === "acción destructiva/mutante")
+        if (decision.reason === "destructive/mutating action")
           skipped.push({ url: link.href, reason: decision.reason });
         continue;
       }

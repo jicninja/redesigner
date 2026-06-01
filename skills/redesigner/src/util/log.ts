@@ -1,14 +1,14 @@
 import { consola } from "consola";
 
 /**
- * Logger compartido. Nunca debe recibir credenciales: enmascará cualquier
- * valor sensible antes de loguear con `redact`.
+ * Shared logger. It must never receive credentials: mask any
+ * sensitive value before logging with `redact`.
  */
 export const log = consola.withTag("redesigner");
 
-/** Enmascara una credencial para que sea seguro mostrarla en logs. */
+/** Masks a credential so it is safe to display in logs. */
 export function redact(value: string | undefined | null): string {
-  if (!value) return "(vacío)";
+  if (!value) return "(empty)";
   if (value.length <= 4) return "****";
   return `${value.slice(0, 2)}****${value.slice(-1)}`;
 }

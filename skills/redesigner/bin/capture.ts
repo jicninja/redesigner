@@ -8,20 +8,20 @@ const program = new Command();
 program
   .name("redesigner")
   .description(
-    "Releva una web con Playwright (solo lectura) y prepara su rediseño.",
+    "Surveys a website with Playwright (read-only) and prepares its redesign.",
   );
 
 program
   .command("capture")
-  .description("Loguea, crawlea (no destructivo) y guarda artefactos del sitio.")
-  .requiredOption("--url <url>", "URL del sitio a relevar")
-  .option("--login-url <url>", "URL de login si difiere de --url")
-  .option("--out <dir>", "directorio de salida", "./redesigner-artifacts")
-  .option("--max-pages <n>", "máximo de páginas a crawlear", "25")
-  .option("--viewport <WxH>", "tamaño del viewport", "1440x900")
-  .option("--no-headless", "abrir el navegador (necesario si el sitio pide login: es manual)")
-  .option("--capture-trace", "grabar un trace de Playwright (pesado)", false)
-  .option("--page-timeout <ms>", "timeout por página", "30000")
+  .description("Logs in, crawls (non-destructive) and saves the site's artifacts.")
+  .requiredOption("--url <url>", "URL of the site to survey")
+  .option("--login-url <url>", "login URL if it differs from --url")
+  .option("--out <dir>", "output directory", "./redesigner-artifacts")
+  .option("--max-pages <n>", "maximum number of pages to crawl", "25")
+  .option("--viewport <WxH>", "viewport size", "1440x900")
+  .option("--no-headless", "open the browser (required if the site asks for login: it is manual)")
+  .option("--capture-trace", "record a Playwright trace (heavy)", false)
+  .option("--page-timeout <ms>", "timeout per page", "30000")
   .action(async (opts) => {
     try {
       const config = buildCaptureConfig({
@@ -37,18 +37,18 @@ program
       const { runCapture } = await import("../src/capture/index.js");
       await runCapture(config);
     } catch (err) {
-      log.error("Configuración inválida o error en la captura:\n" + formatConfigError(err));
+      log.error("Invalid configuration or error during capture:\n" + formatConfigError(err));
       process.exitCode = 1;
     }
   });
 
 program
   .command("scaffold")
-  .description("Genera el proyecto base del rediseño (React + Tailwind + motion).")
-  .requiredOption("--out <dir>", "directorio del proyecto (donde está redesigner-artifacts)")
+  .description("Generates the redesign's base project (React + Tailwind + motion).")
+  .requiredOption("--out <dir>", "project directory (where redesigner-artifacts lives)")
   .option(
     "--artifacts <dir>",
-    "directorio de artefactos",
+    "artifacts directory",
     "./redesigner-artifacts",
   )
   .option("--target <target>", "react | html", "react")
@@ -61,7 +61,7 @@ program
         target: opts.target,
       });
     } catch (err) {
-      log.error("Error en el scaffold: " + String(err));
+      log.error("Error during scaffold: " + String(err));
       process.exitCode = 1;
     }
   });

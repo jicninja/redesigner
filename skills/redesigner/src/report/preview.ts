@@ -3,9 +3,9 @@ import { writeFileSafe } from "../util/fs.js";
 import type { PageArtifacts } from "../capture/page-capture.js";
 
 /**
- * Genera un preview.html MUY básico: una galería de las screenshots capturadas
- * con links al HTML guardado de cada página (embebible en iframe). La idea es
- * revisar a ojo lo scrapeado sin gastar contexto del modelo en tokens/imágenes.
+ * Generates a VERY basic preview.html: a gallery of the captured screenshots
+ * with links to the saved HTML of each page (embeddable in an iframe). The idea is
+ * to eyeball what was scraped without spending model context on tokens/images.
  */
 export async function writePreview(
   outAbs: string,
@@ -19,19 +19,19 @@ export async function writePreview(
       <strong>${escapeHtml(p.title || p.slug)}</strong>
       <a href="${escapeHtml(p.url)}" target="_blank" rel="noreferrer">${escapeHtml(p.url)}</a>
     </header>
-    <a href="${p.screenshotFull}" target="_blank" title="ver full">
+    <a href="${p.screenshotFull}" target="_blank" title="view full">
       <img loading="lazy" src="${p.screenshotViewport}" alt="${escapeHtml(p.slug)}" />
     </a>
     <footer>
       <a href="${p.html}" target="_blank">HTML</a> ·
-      <a href="${p.screenshotFull}" target="_blank">screenshot full</a>
+      <a href="${p.screenshotFull}" target="_blank">full screenshot</a>
     </footer>
   </article>`,
     )
     .join("\n");
 
   const html = `<!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -51,8 +51,8 @@ export async function writePreview(
 </style>
 </head>
 <body>
-  <h1>Preview del relevamiento</h1>
-  <div class="meta">${escapeHtml(meta.url)} · acceso: ${escapeHtml(meta.auth)} · ${captured.length} páginas · click en una imagen para ver el full</div>
+  <h1>Survey preview</h1>
+  <div class="meta">${escapeHtml(meta.url)} · access: ${escapeHtml(meta.auth)} · ${captured.length} pages · click an image to view the full version</div>
   <div class="grid">
 ${cards}
   </div>

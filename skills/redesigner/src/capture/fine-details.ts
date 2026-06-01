@@ -4,7 +4,7 @@ import type { Page } from "playwright";
 import { writeJson, ensureDir } from "../util/fs.js";
 import { log } from "../util/log.js";
 
-/** Cuántos elementos hover/focus se capturan en runtime (tope de tiempo). */
+/** How many hover/focus elements are captured at runtime (time cap). */
 const RUNTIME_CAP = 24;
 
 interface ParsedCss {
@@ -15,7 +15,7 @@ interface ParsedCss {
   keyframes: { name: string; css: string }[];
 }
 
-/** Quita pseudo-clases de un selector para poder matchearlo en el DOM. */
+/** Strips pseudo-classes from a selector so it can be matched in the DOM. */
 function basify(selector: string): string {
   return selector
     .replace(/::?[a-z-]+(\([^)]*\))?/gi, "")
@@ -71,7 +71,7 @@ function parseCss(css: string): ParsedCss {
         }
       }
 
-      // Declaraciones de transition/animation dentro de la regla.
+      // transition/animation declarations within the rule.
       csstree.walk(node.block, {
         visit: "Declaration",
         enter(decl) {
@@ -103,7 +103,7 @@ function parseCss(css: string): ParsedCss {
   return res;
 }
 
-/** Captura en runtime el estado before/after de un pseudo (hover|focus). */
+/** Captures the before/after state of a pseudo (hover|focus) at runtime. */
 async function capturePseudo(
   page: Page,
   selectors: string[],
@@ -144,7 +144,7 @@ async function capturePseudo(
       const shot = path.join("screenshots", pseudo, `${n}.png`);
       await loc.screenshot({ path: path.join(outAbs, shot) }).catch(() => {});
 
-      // Solo guardar si hubo cambio visible.
+      // Only save if there was a visible change.
       const diff = props.filter((k) => (before as any)[k] !== (after as any)[k]);
       results.push({ selector: sel, screenshot: shot, before, after, changed: diff });
       n++;
@@ -156,8 +156,8 @@ async function capturePseudo(
 }
 
 /**
- * Extrae detalles finos: hover/focus (pixeles + diff de estilos), transitions
- * y @keyframes (declarativo). Corre sobre la página actual.
+ * Extracts fine details: hover/focus (pixels + style diff), transitions and
+ * @keyframes (declarative). Runs on the current page.
  */
 export async function extractFineDetails(
   page: Page,
@@ -166,7 +166,7 @@ export async function extractFineDetails(
 ): Promise<void> {
   const parsed = parseCss(combinedCss);
   log.info(
-    `Detalles: ${parsed.hoverSelectors.length} hover, ${parsed.focusSelectors.length} focus, ` +
+    `Details: ${parsed.hoverSelectors.length} hover, ${parsed.focusSelectors.length} focus, ` +
       `${parsed.keyframes.length} @keyframes, ${parsed.transitions.length} transitions.`,
   );
 

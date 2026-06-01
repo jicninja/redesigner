@@ -15,7 +15,7 @@ interface LogoCandidate {
   page: string;
 }
 
-/** Heurística in-page: encuentra y puntúa candidatos a logo. */
+/** In-page heuristic: finds and scores logo candidates. */
 function findCandidatesInPage() {
   const results: Omit<LogoCandidate, "page">[] = [];
   const top = (el: Element) => {
@@ -35,7 +35,7 @@ function findCandidatesInPage() {
     const attrs = `${el.className} ${el.id} ${el.getAttribute("alt") ?? ""} ${el.getAttribute("aria-label") ?? ""}`;
     if (hint.test(attrs)) score += 4;
     if (top(el)) score += 3;
-    // logos suelen ser anchos pero no enormes
+    // logos tend to be wide but not huge
     if (rect.width >= 60 && rect.width <= 320 && rect.height <= 120) score += 2;
 
     const tag = el.tagName.toLowerCase();
@@ -64,21 +64,21 @@ function findCandidatesInPage() {
   };
 
   document.querySelectorAll("header img, header svg, nav img, nav svg, [role='banner'] img, [role='banner'] svg, a[href='/'] img, a[href='/'] svg").forEach(consider);
-  // Fallback: cualquier img/svg con hint en el atributo.
+  // Fallback: any img/svg with a hint in its attributes.
   document.querySelectorAll("img, svg").forEach((el) => {
     const attrs = `${el.className} ${el.id} ${el.getAttribute("alt") ?? ""}`;
     if (hint.test(attrs)) consider(el);
   });
 
-  // og:image y favicon como fallback de baja prioridad.
+  // og:image and favicon as a low-priority fallback.
   const og = document.querySelector('meta[property="og:image"]')?.getAttribute("content");
   const icon = document.querySelector('link[rel~="icon"], link[rel="apple-touch-icon"]')?.getAttribute("href");
   return { results, og, icon };
 }
 
 /**
- * Detecta el logo: navega a la primera página capturada, puntúa candidatos,
- * los descarga (img por fetch, svg por screenshot) y elige el mejor como logo.png.
+ * Detects the logo: navigates to the first captured page, scores candidates,
+ * downloads them (img via fetch, svg via screenshot) and picks the best as logo.png.
  */
 export async function detectLogo(
   context: BrowserContext,
@@ -95,7 +95,7 @@ export async function detectLogo(
   let ogImage: string | undefined;
   let favicon: string | undefined;
 
-  // Mirar hasta 3 páginas para detectar recurrencia del logo.
+  // Look at up to 3 pages to detect logo recurrence.
   for (const art of captured.slice(0, 3)) {
     try {
       await page.goto(art.url, { waitUntil: "domcontentloaded", timeout: 20000 });
@@ -108,7 +108,7 @@ export async function detectLogo(
     }
   }
 
-  // Recurrencia: candidatos con mismo src/selector en varias páginas suman.
+  // Recurrence: candidates with the same src/selector across pages score higher.
   const recur = new Map<string, number>();
   for (const c of all) {
     const key = c.src ?? c.selector;
@@ -119,7 +119,7 @@ export async function detectLogo(
     if ((recur.get(key) ?? 0) > 1) c.score += 3;
   }
 
-  // Dedup por key, quedarse con el de mayor score.
+  // Dedup by key, keeping the one with the highest score.
   const byKey = new Map<string, LogoCandidate>();
   for (const c of all) {
     const key = c.src ?? c.selector;
@@ -128,7 +128,7 @@ export async function detectLogo(
   }
   const ranked = [...byKey.values()].sort((a, b) => b.score - a.score).slice(0, 6);
 
-  // Descargar candidatos.
+  // Download candidates.
   let saved = 0;
   const savedMeta: (LogoCandidate & { file: string })[] = [];
   for (let i = 0; i < ranked.length; i++) {
@@ -145,7 +145,7 @@ export async function detectLogo(
           savedMeta.push({ ...c, file });
         }
       } else {
-        // SVG: rasterizar por screenshot del bounding box.
+        // SVG: rasterize via a screenshot of the bounding box.
         await page.goto(c.page, { waitUntil: "domcontentloaded", timeout: 20000 });
         const loc = page.locator(c.selector).first();
         if ((await loc.count()) > 0) {
@@ -159,7 +159,7 @@ export async function detectLogo(
     }
   }
 
-  // Fallback: si no se guardó nada, usar favicon/og.
+  // Fallback: if nothing was saved, use favicon/og.
   if (saved === 0 && (favicon || ogImage)) {
     const url = ogImage ?? favicon!;
     try {
@@ -191,8 +191,8 @@ export async function detectLogo(
     favicon,
   });
 
-  // logo.png = mejor candidato, RASTERIZADO (screenshot del elemento) para que
-  // el VLM lo pueda ver (sirve igual para img/png/jpg/svg).
+  // logo.png = best candidate, RASTERIZED (element screenshot) so the VLM can
+  // see it (works equally for img/png/jpg/svg).
   if (savedMeta.length > 0) {
     const best = savedMeta[0];
     let rasterized = false;
@@ -205,11 +205,11 @@ export async function detectLogo(
           rasterized = true;
         }
       } catch {
-        /* fallback abajo */
+        /* fallback below */
       }
     }
     if (!rasterized) {
-      // Fallback: bajar el binario (png/jpg) o copiar el archivo guardado.
+      // Fallback: download the binary (png/jpg) or copy the saved file.
       try {
         const { readFile } = await import("node:fs/promises");
         const buf = await readFile(path.join(candDir, best.file));
@@ -221,7 +221,7 @@ export async function detectLogo(
   }
 
   await page.close().catch(() => {});
-  log.info(`Logo: ${saved} candidatos guardados.`);
+  log.info(`Logo: ${saved} candidates saved.`);
   return saved;
 }
 

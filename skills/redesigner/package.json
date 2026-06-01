@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Releva una web (Playwright) y prepara un rediseño con Claude (React + Tailwind + Framer Motion), Pencil, mock HTML y Figma.",
+  "description": "Surveys a website (Playwright) and prepares a redesign with Claude (React + Tailwind + Framer Motion), Pencil, HTML mock and Figma.",
   "engines": {
     "node": ">=20"
   },

@@ -44,8 +44,8 @@ export interface DesignTokens {
 }
 
 /**
- * Agrega los computed styles muestreados (css/computed/*.json) en tokens de
- * diseño con frecuencias, e infiere algunos roles (fondo dominante, texto, acento).
+ * Aggregates the sampled computed styles (css/computed/*.json) into design
+ * tokens with frequencies, and infers some roles (dominant background, text, accent).
  */
 export async function buildTokens(outAbs: string, _combinedCss: string): Promise<DesignTokens> {
   const computedDir = path.join(outAbs, "css", "computed");
@@ -102,7 +102,7 @@ export async function buildTokens(outAbs: string, _combinedCss: string): Promise
     roles: {
       dominantBackground: rankedBg[0]?.value,
       primaryText: rankedColors[0]?.value,
-      // acentos: colores frecuentes pero no el texto principal, saturados.
+      // accents: frequent colors that aren't the primary text, saturated.
       accentCandidates: rankedColors
         .slice(1, 6)
         .map((c) => c.value),
@@ -111,7 +111,7 @@ export async function buildTokens(outAbs: string, _combinedCss: string): Promise
 
   await writeJson(path.join(outAbs, "tokens.json"), tokens);
   log.info(
-    `Tokens: ${tokens.colors.length} colores, ${tokens.fontFamilies.length} fuentes, ${tokens.fontSizes.length} tamaños.`,
+    `Tokens: ${tokens.colors.length} colors, ${tokens.fontFamilies.length} fonts, ${tokens.fontSizes.length} sizes.`,
   );
   return tokens;
 }

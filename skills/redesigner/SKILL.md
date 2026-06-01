@@ -1,150 +1,150 @@
 ---
 name: redesigner
-description: Releva una web/app con Playwright (login MANUAL + crawl de SOLO LECTURA), captura screenshots, HTML, CSS, hovers/animaciones, detecta el logo y agrega design tokens; arma un mock navegable de lo relevado, suma una auditoría UX por subagente, y después orquesta el rediseño con Claude (React + Tailwind + Framer Motion) y exporta a Pencil, mock HTML y Figma. Usar cuando el usuario quiera relevar/auditar el estilo de un sitio o rediseñarlo. Trigger en "rediseñar", "relevar este sitio", "scrapear el estilo", "redesigner".
+description: Surveys a website/app with Playwright (MANUAL login + READ-ONLY crawl), captures screenshots, HTML, CSS, hovers/animations, detects the logo and extracts design tokens; builds a navigable mock of what was surveyed, adds a UX audit via subagent, then orchestrates the redesign with Claude (React + Tailwind + Framer Motion) and exports to Pencil, an HTML mock and Figma. Use when the user wants to survey/audit a site's style or redesign it. Triggers on "redesign", "survey this site", "scrape the style", "redesigner".
 ---
 
-# redesigner — relevar y rediseñar un sitio
+# redesigner — survey and redesign a site
 
-Pipeline híbrido: un motor Node/Playwright (determinístico, **solo lectura**) captura artefactos; vos (Claude, con visión) hacés el análisis, el logo, las preguntas y el rediseño. Los pasos pesados (mock navegable, auditoría UX, build del rediseño, exports) se **delegan a subagentes** para no gastar el contexto de esta conversación.
+Hybrid pipeline: a Node/Playwright engine (deterministic, **read-only**) captures artifacts; you (Claude, with vision) do the analysis, the logo, the questions and the redesign. The heavy steps (navigable mock, UX audit, redesign build, exports) are **delegated to subagents** so they don't consume this conversation's context.
 
-`SKILL_DIR` = directorio de este skill (donde está `package.json`). `PROYECTO` = cwd del usuario.
+`SKILL_DIR` = this skill's directory (where `package.json` lives). `PROJECT` = the user's cwd.
 
-## 0. Setup (primera vez)
+## 0. Setup (first time)
 
-Si `SKILL_DIR/node_modules` no existe, instalá dependencias:
+If `SKILL_DIR/node_modules` doesn't exist, install dependencies:
 ```bash
 npm --prefix "SKILL_DIR" install
 ```
-(El `postinstall` baja Chromium de Playwright.)
+(The `postinstall` downloads Playwright's Chromium.)
 
-## 1. Preflight interactivo (en español)
+## 1. Interactive preflight (in the user's language)
 
-1. Pedí la **URL** del sitio si no la dieron.
-2. **Advertí SIEMPRE** (literal): *"El login es MANUAL: si el sitio pide usuario y contraseña, se abre una ventana del navegador y logueás vos a mano. Yo nunca te pido ni manejo credenciales. Aun así, usá una cuenta de PRUEBA/testing, nunca una productiva. El crawler es de solo lectura — no borra, edita ni envía formularios."*
-3. **Nunca** pidas usuario/contraseña por el chat. No hace falta saber de antemano si el sitio tiene login: el motor lo detecta solo y, si hay, abre el navegador para que loguees a mano.
+1. Ask for the site **URL** if it wasn't provided.
+2. **ALWAYS warn** (deliver this in the user's language): *"Login is MANUAL: if the site asks for a username and password, a browser window opens and you log in yourself, by hand. I never ask for or handle credentials. Even so, use a TEST account, never a production one. The crawler is read-only — it never deletes, edits or submits forms."*
+3. **Never** ask for username/password over chat. You don't need to know in advance whether the site has a login: the engine detects it on its own and, if there is one, opens the browser so you can log in manually.
 
-> Seguridad: el motor **no acepta credenciales** (no hay flags ni env vars de user/pass). El único camino de login es manual en la ventana visible. Esto es intencional.
+> Security: the engine **does not accept credentials** (there are no user/pass flags or env vars). The only login path is manual, in the visible window. This is intentional.
 
-## 2. Capture (determinístico, solo lectura, login manual)
+## 2. Capture (deterministic, read-only, manual login)
 
-Corré **siempre con `--no-headless`** (el navegador tiene que ser visible por si aparece un login manual):
+Always run **with `--no-headless`** (the browser must be visible in case a manual login appears):
 ```bash
 npm --prefix "SKILL_DIR" run capture -- \
-  --url "<URL>" --out "PROYECTO/redesigner-artifacts" --max-pages 25 --no-headless
+  --url "<URL>" --out "PROJECT/redesigner-artifacts" --max-pages 25 --no-headless
 ```
-Lanzalo en **background** (el navegador queda abierto esperando que loguees si hay login). Si el sitio pide login, aparece una ventana de Chromium: avisale al usuario que **logueé a mano**; el motor detecta solo cuando entró y sigue con el crawl (no hay que tocar la terminal). Flags útiles: `--login-url`, `--max-pages`, `--viewport`.
+Launch it in the **background** (the browser stays open waiting for you to log in if there's a login). If the site asks for login, a Chromium window appears: tell the user to **log in by hand**; the engine detects on its own when they're in and continues the crawl (no need to touch the terminal). Useful flags: `--login-url`, `--max-pages`, `--viewport`.
 
-Al terminar, leé `redesigner-artifacts/manifest.json` (páginas, `auth`, `warnings`, `skippedDestructive`). Si `auth` es `failed: ...`, decí el motivo (p. ej. timeout del login manual) y ofrecé reintentar.
+When it finishes, read `redesigner-artifacts/manifest.json` (pages, `auth`, `warnings`, `skippedDestructive`). If `auth` is `failed: ...`, state the reason (e.g. manual-login timeout) and offer to retry.
 
-## 3. Revisión barata del scrape (preview.html)
+## 3. Cheap scrape review (preview.html)
 
-**Antes de gastar contexto en imágenes**, abrí el preview para revisar a ojo lo capturado:
+**Before spending context on images**, open the preview to eyeball what was captured:
 ```bash
-open "PROYECTO/redesigner-artifacts/preview.html"
+open "PROJECT/redesigner-artifacts/preview.html"
 ```
-Es una galería básica (screenshots viewport + links al HTML/full de cada página). Mirá ahí qué se relevó. Solo cargá screenshots puntuales con Read cuando necesites detalle visual fino — no leas todas.
+It's a basic gallery (viewport screenshots + links to each page's HTML/full). Look there at what was surveyed. Only load specific screenshots with Read when you need fine visual detail — don't read them all.
 
-## 4. Mock navegable del sitio relevado — vía SUBAGENTE
+## 4. Navigable mock of the surveyed site — via SUBAGENT
 
-**Antes de analizar y de pedir decisiones**, generá un **mock navegable** del sitio tal como lo capturó Playwright, para que el usuario recorra vista por vista lo relevado. **Delegalo a un subagente** (Agent tool) con contexto limpio. Pasale solo la ruta de `redesigner-artifacts`. El subagente debe:
+**Before analyzing and before asking for decisions**, generate a **navigable mock** of the site exactly as Playwright captured it, so the user can walk through what was surveyed view by view. **Delegate it to a subagent** (Agent tool) with a clean context. Pass it only the `redesigner-artifacts` path. The subagent must:
 
-- Leer `redesigner-artifacts/manifest.json` y las `screenshots/*.full.png`.
-- Escribir `redesigner-artifacts/site-mock/index.html`: un HTML **autocontenido y navegable** (sin servidor, solo JS + rutas relativas a `../screenshots/*.full.png`). Estructura simple: un panel lateral (o topbar) con la lista de páginas (por `title`/`slug` del manifest) y un área principal que muestra el **screenshot full** de la vista elegida; al clickear una página de la lista, cambia la vista (mock "vista por vista"). Liviano y claro, nada de frameworks.
-- Devolver un resumen corto (qué páginas incluyó), NO volcar el HTML.
+- Read `redesigner-artifacts/manifest.json` and the `screenshots/*.full.png`.
+- Write `redesigner-artifacts/site-mock/index.html`: a **self-contained, navigable** HTML file (no server, just JS + relative paths to `../screenshots/*.full.png`). Simple structure: a side panel (or topbar) with the list of pages (by `title`/`slug` from the manifest) and a main area showing the **full screenshot** of the selected view; clicking a page in the list changes the view (a "view by view" mock). Lightweight and clear, no frameworks.
+- Return a short summary (which pages it included), NOT the HTML dump.
 
-Después, abrilo para el usuario:
+Then open it for the user:
 ```bash
-open "PROYECTO/redesigner-artifacts/site-mock/index.html"
+open "PROJECT/redesigner-artifacts/site-mock/index.html"
 ```
-Decile que ahí puede recorrer el sitio relevado vista por vista.
+Tell them they can walk through the surveyed site view by view there.
 
-## 5. Escribir los reportes de análisis
+## 5. Write the analysis reports
 
-Rellená los esqueletos en `redesigner-artifacts/reports/` (ya existen con TODOs):
-- `site-overview.md` — qué es/hace el sitio (de HTML + screenshots).
-- `visual-style.md` — layout, color, tipografía, densidad, lenguaje de movimiento (mirá `css/transitions.json`, `css/animations.json`, `css/hover-states.json`).
-- `design-tokens.md` — anotá roles de paleta/escala desde `tokens.json`.
+Fill in the skeletons in `redesigner-artifacts/reports/` (they already exist with TODOs):
+- `site-overview.md` — what the site is/does (from HTML + screenshots).
+- `visual-style.md` — layout, color, typography, density, motion language (look at `css/transitions.json`, `css/animations.json`, `css/hover-states.json`).
+- `design-tokens.md` — note palette/scale roles from `tokens.json`.
 
 ## 6. Logo (VLM)
 
-Mirá `redesigner-artifacts/logo/logo.png` y `logo/candidates/` con Read. Completá `reports/logo-analysis.md`: tipo (wordmark/isotipo/combinado), calidad, **¿es básico/genérico?** (sí/no + por qué).
+Look at `redesigner-artifacts/logo/logo.png` and `logo/candidates/` with Read. Complete `reports/logo-analysis.md`: type (wordmark/icon/combined), quality, **is it basic/generic?** (yes/no + why).
 
-Si es **básico**:
-1. `AskUserQuestion`: pedile al usuario que explique la marca (valores, audiencia, qué la diferencia).
-2. Componé un **prompt afinado para gpt-image** (concepto, estilo, paleta de `tokens.json`, fondo transparente, variaciones) y escribilo en `reports/logo-prompt.md`. Mostráselo: **el usuario lo lanza a mano** en gpt-image/ChatGPT (no hay llamada a API). El logo resultante lo dejará en `redesign/src/assets/`.
+If it's **basic**:
+1. `AskUserQuestion`: ask the user to explain the brand (values, audience, what sets it apart).
+2. Compose a **refined prompt for gpt-image** (concept, style, palette from `tokens.json`, transparent background, variations) and write it to `reports/logo-prompt.md`. Show it to them: **the user runs it by hand** in gpt-image/ChatGPT (no API call). They'll drop the resulting logo into `redesign/src/assets/`.
 
-## 7. Auditoría UX experta — vía SUBAGENTE
+## 7. Expert UX audit — via SUBAGENT
 
-**Antes de pedirle decisiones al usuario**, sumá una mirada experta. **Delegá a un subagente** (Agent tool) que actúe como **diseñador/a senior de UI/UX y producto**. Pasale las rutas de `redesigner-artifacts` (screenshots full + `reports/*.md` ya escritos). El subagente debe:
+**Before asking the user for decisions**, add an expert eye. **Delegate to a subagent** (Agent tool) that acts as a **senior UI/UX and product designer**. Pass it the `redesigner-artifacts` paths (full screenshots + the `reports/*.md` already written). The subagent must:
 
-- Revisar las pantallas y los reportes y producir una **auditoría accionable** en `redesigner-artifacts/reports/uiux-expert-review.md`, cubriendo: heurísticas de Nielsen, jerarquía visual, consistencia (botones/espaciado/color), accesibilidad y contraste, densidad y legibilidad, patrones de navegación, estados (vacío/carga/error), y **quick wins** vs **oportunidades de rediseño**.
-- Priorizar las recomendaciones (impacto × esfuerzo) y, cuando aplique, mapear problemas concretos a soluciones de diseño.
-- Devolver un **resumen corto** (top hallazgos y recomendaciones) — NO volcar todo el archivo.
+- Review the screens and reports and produce an **actionable audit** in `redesigner-artifacts/reports/uiux-expert-review.md`, covering: Nielsen's heuristics, visual hierarchy, consistency (buttons/spacing/color), accessibility and contrast, density and legibility, navigation patterns, states (empty/loading/error), and **quick wins** vs **redesign opportunities**.
+- Prioritize the recommendations (impact × effort) and, where applicable, map concrete problems to design solutions.
+- Return a **short summary** (top findings and recommendations) — NOT the whole file.
 
-Leé `reports/uiux-expert-review.md` (o el resumen) y **incorporá sus recomendaciones** a tus decisiones y al brief del paso 9.
+Read `reports/uiux-expert-review.md` (or the summary) and **incorporate its recommendations** into your decisions and the step-9 brief.
 
-## 8. Preguntas de rediseño
+## 8. Redesign questions
 
-`AskUserQuestion` (multi si aplica):
-- **Tipo**: revamp total vs refinamiento.
-- **Estilo**: minimal / corporate / playful / dark / etc.
-- **Prioridad**: qué páginas/componentes importan más.
+`AskUserQuestion` (multi if applicable):
+- **Type**: full revamp vs refinement.
+- **Style**: minimal / corporate / playful / dark / etc.
+- **Priority**: which pages/components matter most.
 
-Con las respuestas + la auditoría UX, completá `reports/redesign-brief.md`: mejoras concretas, inventario de componentes, y el **plan de movimiento** (mapear transitions/keyframes a variants de `motion`).
+With the answers + the UX audit, complete `reports/redesign-brief.md`: concrete improvements, component inventory, and the **motion plan** (map transitions/keyframes to `motion` variants).
 
-## 9. Claude design (SIEMPRE primero) — vía SUBAGENTE
+## 9. Claude design (ALWAYS first) — via SUBAGENT
 
-Generá la base del proyecto:
+Generate the project base:
 ```bash
-npm --prefix "SKILL_DIR" run scaffold -- --out "PROYECTO" --artifacts "PROYECTO/redesigner-artifacts"
+npm --prefix "SKILL_DIR" run scaffold -- --out "PROJECT" --artifacts "PROJECT/redesigner-artifacts"
 ```
-Esto crea `PROYECTO/redesign/` (React 19 + Vite 8 + Tailwind v4 + `motion@12`, tokens en `src/styles/theme.css`, variants en `src/lib/motion.ts`, stubs de componentes/páginas).
+This creates `PROJECT/redesign/` (React 19 + Vite 8 + Tailwind v4 + `motion@12`, tokens in `src/styles/theme.css`, variants in `src/lib/motion.ts`, component/page stubs).
 
-El scaffold también genera el **split mode** embebido: `src/CompareShell.tsx`, un shell que **envuelve la app** (`main.tsx` monta `<CompareShell><App/></CompareShell>`). Compara el sitio **original** (lado "antes", iframe servido **offline** desde `public/_original/` — copiado de los artefactos `html/`, `assets/`, `css/`; lista de páginas en `src/lib/original.ts`) contra el **rediseño real** (lado "ahora", el propio `App` renderizado), con una cortina que por **default sigue el mouse** y se puede **fijar** (botón 🖱️ en la barra o clic en el handle ⇔; al fijar, el handle se arrastra y se libera el hover/click sobre el rediseño). El **scroll** y la **vista** (dropdown ↔ ruta del rediseño, vía `route` en `src/lib/original.ts`) se sincronizan entre ambos lados. Por **default** muestra el split; **doble click** = solo el diseño nuevo a pantalla completa (oculta la barra), otro doble click vuelve al split. El subagente NO debe romper el montaje de `CompareShell` ni `public/_original/`.
+The scaffold also generates the embedded **split mode**: `src/CompareShell.tsx`, a shell that **wraps the app** (`main.tsx` mounts `<CompareShell><App/></CompareShell>`). It compares the **original** site (the "before" side, an iframe served **offline** from `public/_original/` — copied from the `html/`, `assets/`, `css/` artifacts; page list in `src/lib/original.ts`) against the **real redesign** (the "after" side, the `App` itself rendered), with a curtain that by **default follows the mouse** and can be **pinned** (🖱️ button in the bar or click on the ⇔ handle; when pinned, the handle is draggable and hover/click over the redesign is freed). **Scroll** and the **view** (dropdown ↔ redesign route, via `route` in `src/lib/original.ts`) are synced between both sides. By **default** it shows the split; **double click** = only the new design fullscreen (hides the bar), another double click returns to the split. The subagent must NOT break the `CompareShell` mount or `public/_original/`.
 
-Luego **delegá el build del rediseño a un subagente** (Agent tool) para ahorrar contexto. El subagente debe:
-- Usar el skill `frontend-design`.
-- Leer `reports/redesign-brief.md`, `visual-style.md`, `design-tokens.md`, `uiux-expert-review.md` y las screenshots relevantes del preview.
-- Completar componentes y páginas en `PROYECTO/redesign/`, usando Tailwind v4 (`@theme`) y Framer Motion (`motion/react`) de forma generosa (entrada con `fadeUp`/`staggerContainer`, hover/tap con `hoverLift`, transición de páginas con `AnimatePresence`).
-- Verificar con `npm install && npm run build` dentro de `redesign/`.
-- Devolver un resumen corto (qué construyó, qué falta), NO volcar todos los archivos.
+Then **delegate the redesign build to a subagent** (Agent tool) to save context. The subagent must:
+- Use the `frontend-design` skill.
+- Read `reports/redesign-brief.md`, `visual-style.md`, `design-tokens.md`, `uiux-expert-review.md` and the relevant screenshots from the preview.
+- Complete the components and pages in `PROJECT/redesign/`, using Tailwind v4 (`@theme`) and Framer Motion (`motion/react`) generously (entrance with `fadeUp`/`staggerContainer`, hover/tap with `hoverLift`, page transitions with `AnimatePresence`).
+- Verify with `npm install && npm run build` inside `redesign/`.
+- Return a short summary (what it built, what's left), NOT all the files.
 
-`redesign/` es la **fuente de verdad** para los exports.
+`redesign/` is the **source of truth** for the exports.
 
-## 9b. Mostrar + iterar (MILESTONE — gate obligatorio antes de exportar)
+## 9b. Show + iterate (MILESTONE — mandatory gate before exporting)
 
-**No exportes hasta que el usuario apruebe el rediseño.** Después de que el subagente construye:
+**Don't export until the user approves the redesign.** After the subagent builds:
 
-1. **Mostrá el rediseño**. Levantá el proyecto y sacá screenshots de las pantallas clave:
+1. **Show the redesign**. Bring up the project and take screenshots of the key screens:
    ```bash
-   cd "PROYECTO/redesign" && npm run dev   # (en background) o npm run build && npm run preview
+   cd "PROJECT/redesign" && npm run dev   # (in background) or npm run build && npm run preview
    ```
-   Tomá capturas (con el Playwright del propio skill o el skill `run`) de las vistas principales en desktop y mobile, y mostráselas al usuario con Read. Si no, decile la URL local (`http://localhost:5173`) para que lo mire.
-1c. **Split antes/ahora.** Con el rediseño levantado (`http://localhost:5173`), el comparador `CompareShell` ya está embebido: la app arranca mostrando el **split** sobre el rediseño.
-   Explicale al usuario: **Split** es el modo por defecto y la cortina por **default sigue el mouse**; con el botón 🖱️ (o clic en el handle ⇔) la **fijás** para hacer hover/click sobre el rediseño, y la reposicionás **arrastrando** el handle. Los botones `[Antes] [Split] [Ahora]` fijan un lado (en Antes el original queda interactivo); **doble click** muestra solo el diseño nuevo a pantalla completa y otro doble click vuelve al Split; el dropdown elige qué página original comparar y **navega también el rediseño**. El **scroll** se sincroniza entre lados. El lado "antes" es el HTML original copiado a `redesign/public/_original/`; el "ahora" es el rediseño real renderizado. No hay artefacto `split.html` aparte ni ruta especial: el comparador envuelve la app.
-2. **Preguntá si le gusta** (`AskUserQuestion` o abierto): ¿aprobado o querés cambios?
-3. **Si quiere cambios**: tomá su prompt/feedback y **volvé a delegar al subagente** (paso 9) con ese feedback + lo ya construido. Repetí el ciclo *build → mostrar → feedback* las veces que haga falta.
-4. **Solo cuando el usuario apruebe**, pasá a los exports.
+   Take captures (with the skill's own Playwright or the `run` skill) of the main views on desktop and mobile, and show them to the user with Read. Otherwise, tell them the local URL (`http://localhost:5173`) so they can look at it.
+1c. **Before/after split.** With the redesign running (`http://localhost:5173`), the `CompareShell` comparator is already embedded: the app starts by showing the **split** over the redesign.
+   Explain to the user: **Split** is the default mode and the curtain by **default follows the mouse**; with the 🖱️ button (or clicking the ⇔ handle) you **pin** it to hover/click over the redesign, and you reposition it by **dragging** the handle. The `[Before] [Split] [After]` buttons pin one side (in Before the original stays interactive); **double click** shows only the new design fullscreen and another double click returns to Split; the dropdown picks which original page to compare and **navigates the redesign too**. **Scroll** is synced between sides. The "before" side is the original HTML copied to `redesign/public/_original/`; the "after" is the real redesign rendered. There's no separate `split.html` artifact or special route: the comparator wraps the app.
+2. **Ask if they like it** (`AskUserQuestion` or open-ended): approved, or do you want changes?
+3. **If they want changes**: take their prompt/feedback and **delegate to the subagent again** (step 9) with that feedback + what's already built. Repeat the *build → show → feedback* cycle as many times as needed.
+4. **Only when the user approves**, move on to exports.
 
-Este loop de iteración es central: el usuario debe ver y refinar el rediseño por prompt antes de exportar.
+This iteration loop is central: the user must see and refine the redesign by prompt before exporting.
 
-## 10. Exports derivados (opcional, SOLO tras aprobación) — vía SUBAGENTE de contexto limpio
+## 10. Derived exports (optional, ONLY after approval) — via clean-context SUBAGENT
 
-`AskUserQuestion` multi-select: ¿qué exports querés además del proyecto React? (Mock HTML, Figma, Pencil.)
+`AskUserQuestion` multi-select: which exports do you want besides the React project? (HTML mock, Figma, Pencil.)
 
-**Delegá TODOS los exports a un subagente dedicado (Agent tool) con contexto limpio.** Este subagente NO necesita el historial de la conversación: pasale solo las rutas (`PROYECTO`, `redesigner-artifacts`, `redesign/`) y la lista de exports elegidos. Debe:
+**Delegate ALL exports to a dedicated subagent (Agent tool) with a clean context.** This subagent does NOT need the conversation history: pass it only the paths (`PROJECT`, `redesigner-artifacts`, `redesign/`) and the chosen export list. It must:
 
-- **Mock HTML estático**: correr `npm --prefix "SKILL_DIR" run scaffold -- --out "PROYECTO" --artifacts "PROYECTO/redesigner-artifacts" --target html` → genera `redesign-html/index.html` + `tokens.figma.json`.
-- **Figma**: dejar listo `redesign-html/index.html` (importable con el plugin **html.to.design**) y `tokens.figma.json` (plugin **Tokens Studio**); reportar al usuario esos dos caminos.
-- **Pencil (.pen)**: con el MCP `pencil` — `get_editor_state({include_schema:true})` + `get_guidelines`, luego `batch_design` para recrear las pantallas clave del rediseño como diseño .pen (tomando de referencia `redesign/` y las screenshots); verificar con `get_screenshot`.
-- Devolver un resumen corto de qué exportó y dónde quedó cada cosa.
+- **Static HTML mock**: run `npm --prefix "SKILL_DIR" run scaffold -- --out "PROJECT" --artifacts "PROJECT/redesigner-artifacts" --target html` → generates `redesign-html/index.html` + `tokens.figma.json`.
+- **Figma**: leave `redesign-html/index.html` ready (importable with the **html.to.design** plugin) and `tokens.figma.json` (the **Tokens Studio** plugin); report those two paths to the user.
+- **Pencil (.pen)**: with the `pencil` MCP — `get_editor_state({include_schema:true})` + `get_guidelines`, then `batch_design` to recreate the redesign's key screens as a .pen design (using `redesign/` and the screenshots as reference); verify with `get_screenshot`.
+- Return a short summary of what it exported and where each thing ended up.
 
-Así el contexto de esta conversación queda limpio: el mock navegable (paso 4), la auditoría UX (paso 7), el build del rediseño (paso 9) y los exports (paso 10) corren en subagentes.
+This keeps this conversation's context clean: the navigable mock (step 4), the UX audit (step 7), the redesign build (step 9) and the exports (step 10) run in subagents.
 
-## Reglas
+## Rules
 
-- El crawler es **estrictamente de solo lectura**: nunca pide al motor borrar/editar/enviar nada.
-- **Sin credenciales**: el motor nunca recibe ni pide usuario/contraseña. El login, si existe, es **manual** en el navegador visible (`--no-headless`). Nunca pidas credenciales por el chat.
-- Preferí `preview.html` / el mock navegable sobre cargar muchas imágenes al contexto.
-- El mock navegable, la auditoría UX, el build del rediseño y los exports van **por subagente**.
-- El **split** (comparación antes/ahora) está **embebido en `redesign/`** vía `CompareShell` que envuelve la app, no es un artefacto aparte: usa el HTML original copiado a `public/_original/` (con los `assets/` descargados en la captura) y el rediseño real como "ahora". Necesita el server del rediseño levantado (`npm run dev`).
+- The crawler is **strictly read-only**: never ask the engine to delete/edit/submit anything.
+- **No credentials**: the engine never receives or asks for username/password. Login, if any, is **manual** in the visible browser (`--no-headless`). Never ask for credentials over chat.
+- Prefer `preview.html` / the navigable mock over loading many images into context.
+- The navigable mock, the UX audit, the redesign build and the exports go **via subagent**.
+- The **split** (before/after comparison) is **embedded in `redesign/`** via `CompareShell` wrapping the app, not a separate artifact: it uses the original HTML copied to `public/_original/` (with the `assets/` downloaded during capture) and the real redesign as "after". It needs the redesign server running (`npm run dev`).

@@ -2,14 +2,14 @@ import path from "node:path";
 import type { BrowserContext } from "playwright";
 import { writeFileSafe, shortHash } from "../util/fs.js";
 
-/** Extensiones de imagen/fuente/icono que tratamos como asset descargable. */
+/** Image/font/icon extensions that we treat as a downloadable asset. */
 const ASSET_EXT =
   /\.(png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|otf|eot)(\?|#|$)/i;
 
-/** Tope defensivo por asset (~8 MB): más grande que esto se saltea. */
+/** Defensive cap per asset (~8 MB): anything larger is skipped. */
 const MAX_BYTES = 8 * 1024 * 1024;
 
-/** content-type → extensión, para cuando la URL no trae extensión. */
+/** content-type → extension, for when the URL has no extension. */
 function extFromContentType(ct: string): string {
   const c = ct.split(";")[0].trim();
   const map: Record<string, string> = {
@@ -34,10 +34,10 @@ function extFromContentType(ct: string): string {
 }
 
 /**
- * Colecta IMÁGENES/FUENTES/ICONOS interceptando las RESPONSES de la red (como
- * `CssCollector`, inmune a CORS: lee el body de la respuesta). Las guarda a
- * disco con nombre estable y expone un `map` de URL absoluta → ruta local
- * relativa, para que el reescritor deje el "antes" fiel y offline.
+ * Collects IMAGES/FONTS/ICONS by intercepting network RESPONSES (like
+ * `CssCollector`, immune to CORS: it reads the response body). Saves them to
+ * disk with a stable name and exposes a `map` of absolute URL → relative local
+ * path, so the rewriter keeps the "before" faithful and offline.
  */
 export class AssetCollector {
   private assets = new Map<string, string>(); // urlAbs -> assets/<host>/<base>__<hash>.<ext>
@@ -61,7 +61,7 @@ export class AssetCollector {
         const body = await res.body();
         if (body.length > MAX_BYTES) {
           this.warnings.push(
-            `asset >${Math.round(MAX_BYTES / 1024 / 1024)}MB salteado: ${url.slice(0, 120)}`,
+            `asset >${Math.round(MAX_BYTES / 1024 / 1024)}MB skipped: ${url.slice(0, 120)}`,
           );
           return;
         }
@@ -69,12 +69,12 @@ export class AssetCollector {
         await writeFileSafe(path.join(this.outAbs, rel), body);
         this.assets.set(url, rel);
       } catch {
-        // respuestas ilegibles (redirects, abortadas, etc.) se ignoran
+        // unreadable responses (redirects, aborted, etc.) are ignored
       }
     });
   }
 
-  /** Nombre estable `assets/<host>/<base>__<hash>.<ext>` (POSIX, relativo al out). */
+  /** Stable name `assets/<host>/<base>__<hash>.<ext>` (POSIX, relative to out). */
   private localPath(url: string, ct: string): string {
     let host = "asset";
     let base = "asset";
@@ -97,17 +97,17 @@ export class AssetCollector {
     return path.posix.join("assets", host, `${base}__${shortHash(url)}.${ext}`);
   }
 
-  /** Map de URL absoluta → ruta local relativa (copia defensiva). */
+  /** Map of absolute URL → relative local path (defensive copy). */
   map(): Map<string, string> {
     return new Map(this.assets);
   }
 
-  /** Avisos acumulados (assets demasiado grandes, etc.). */
+  /** Accumulated warnings (assets too large, etc.). */
   getWarnings(): string[] {
     return [...this.warnings];
   }
 
-  /** Cantidad de assets efectivamente descargados. */
+  /** Number of assets actually downloaded. */
   count(): number {
     return this.assets.size;
   }

@@ -3,9 +3,9 @@ import type { BrowserContext } from "playwright";
 import { writeFileSafe, shortHash } from "../util/fs.js";
 
 /**
- * Colecta hojas de estilo interceptando las RESPONSES de la red. Esto es
- * inmune a CORS (lee el body de la respuesta, no `cssRules`), así captura
- * CSS de CDNs y otros orígenes.
+ * Collects stylesheets by intercepting network RESPONSES. This is immune to
+ * CORS (it reads the response body, not `cssRules`), so it captures CSS from
+ * CDNs and other origins.
  */
 export class CssCollector {
   private sheets = new Map<string, string>(); // url -> css
@@ -21,12 +21,12 @@ export class CssCollector {
         const body = await res.text();
         if (body.trim()) this.sheets.set(url, body);
       } catch {
-        // respuestas que no se pueden leer (redirects, etc.) se ignoran
+        // responses that can't be read (redirects, etc.) are ignored
       }
     });
   }
 
-  /** Devuelve todo el CSS colectado concatenado (para parseo de tokens/hover). */
+  /** Returns all collected CSS concatenated (for token/hover parsing). */
   combinedCss(): string {
     return [...this.sheets.values()].join("\n\n");
   }
@@ -35,7 +35,7 @@ export class CssCollector {
     return [...this.sheets.entries()].map(([url, css]) => ({ url, css }));
   }
 
-  /** Nombre local estable de una hoja: `<host>__<base>__<hash>.css`. */
+  /** Stable local name for a sheet: `<host>__<base>__<hash>.css`. */
   private localName(url: string): string {
     let host = "inline";
     let base = "sheet";
@@ -49,7 +49,7 @@ export class CssCollector {
     return `${host}__${base}__${shortHash(url)}.css`;
   }
 
-  /** Escribe cada stylesheet a disco con nombre estable `<host>__<hash>.css`. */
+  /** Writes each stylesheet to disk with a stable name `<host>__<hash>.css`. */
   async writeAll(cssDir: string): Promise<string[]> {
     const written: string[] = [];
     for (const [url, css] of this.sheets) {
@@ -61,7 +61,7 @@ export class CssCollector {
     return written;
   }
 
-  /** Mapa urlAbsoluta -> ruta local rel al out (`css/<name>`), para reescritura. */
+  /** Map absoluteUrl -> local path relative to out (`css/<name>`), for rewriting. */
   map(): Map<string, string> {
     const m = new Map<string, string>();
     for (const url of this.sheets.keys()) {

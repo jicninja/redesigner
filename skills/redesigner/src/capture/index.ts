@@ -35,8 +35,8 @@ export interface Manifest {
 }
 
 /**
- * Pipeline de captura completo: login → crawl no destructivo → captura por
- * página → detalles finos + logo + tokens → manifest + esqueletos de reportes.
+ * Full capture pipeline: login → non-destructive crawl → per-page
+ * capture → fine details + logo + tokens → manifest + report skeletons.
  */
 export async function runCapture(config: CaptureConfig): Promise<void> {
   const startedAt = new Date().toISOString();
@@ -44,10 +44,10 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
   await ensureDir(config.outAbs);
 
   log.box(
-    "⚠️  SEGURIDAD: el login es MANUAL en la ventana del navegador — el motor\n" +
-      "NUNCA recibe usuario/contraseña. Usá una cuenta de PRUEBA/testing, nunca\n" +
-      "una productiva. El crawler es de SOLO LECTURA (no borra, edita ni envía\n" +
-      "formularios salvo el login que hacés vos a mano).",
+    "⚠️  SECURITY: login is MANUAL in the browser window — the engine\n" +
+      "NEVER receives your username/password. Use a TEST/testing account, never\n" +
+      "a production one. The crawler is READ-ONLY (it does not delete, edit or submit\n" +
+      "forms, except the login you do by hand).",
   );
 
   const session: Session = await launchSession(config);
@@ -63,7 +63,7 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
 
     const loginResult = await login(page, config);
     if (loginResult.status === "failed") {
-      log.error(`Login falló: ${loginResult.reason}`);
+      log.error(`Login failed: ${loginResult.reason}`);
       warnings.push(`login: ${loginResult.reason}`);
       await writeManifest(config, {
         startedAt,
@@ -78,11 +78,11 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
       return;
     }
     const authLabel =
-      loginResult.status === "public" ? "público" : `ok (${loginResult.method})`;
-    log.success(`Acceso: ${authLabel}`);
+      loginResult.status === "public" ? "public" : `ok (${loginResult.method})`;
+    log.success(`Access: ${authLabel}`);
     if (loginResult.status !== "public") await saveStorageState(session);
 
-    // Crawl no destructivo capturando cada página.
+    // Non-destructive crawl, capturing each page.
     const startUrl = page.url();
     const { visited, skipped } = await crawl(
       page,
@@ -95,13 +95,13 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
         },
       },
     );
-    log.success(`Crawl: ${visited.length} páginas, ${skipped.length} saltadas.`);
+    log.success(`Crawl: ${visited.length} pages, ${skipped.length} skipped.`);
 
-    // Escribir todas las hojas de estilo colectadas por red.
+    // Write all the stylesheets collected over the network.
     const sheetNames = await css.writeAll(path.join(config.outAbs, "css"));
     const combinedCss = css.combinedCss();
 
-    // Reescribir HTML/CSS guardados → assets locales (offline) + <base> fallback.
+    // Rewrite saved HTML/CSS → local assets (offline) + <base> fallback.
     try {
       await rewriteCapturedAssets(
         config.outAbs,
@@ -111,15 +111,15 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
         warnings,
       );
     } catch (err) {
-      warnings.push(`reescritura assets: ${String(err).slice(0, 120)}`);
+      warnings.push(`asset rewrite: ${String(err).slice(0, 120)}`);
     }
     warnings.push(...assets.getWarnings());
 
-    // Detalles finos (hover/focus/transitions/keyframes) sobre la primera página.
+    // Fine details (hover/focus/transitions/keyframes) on the first page.
     try {
       await extractFineDetails(page, config.outAbs, combinedCss);
     } catch (err) {
-      warnings.push(`detalles finos: ${String(err).slice(0, 120)}`);
+      warnings.push(`fine details: ${String(err).slice(0, 120)}`);
     }
 
     // Logo.
@@ -130,17 +130,17 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
       warnings.push(`logo: ${String(err).slice(0, 120)}`);
     }
 
-    // Tokens de diseño.
+    // Design tokens.
     try {
       await buildTokens(config.outAbs, combinedCss);
     } catch (err) {
       warnings.push(`tokens: ${String(err).slice(0, 120)}`);
     }
 
-    // Esqueletos de reportes para que Claude rellene.
+    // Report skeletons for Claude to fill in.
     await writeReportSkeletons(config.outAbs, config.url);
 
-    // Preview.html: galería básica para revisar lo scrapeado a ojo (barato).
+    // Preview.html: basic gallery to eyeball what was scraped (cheap).
     await writePreview(config.outAbs, captured, { url: config.url, auth: authLabel });
 
     await writeManifest(config, {
@@ -154,7 +154,7 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
       warnings,
     });
 
-    log.success(`Artefactos en: ${config.outAbs} (${assets.count()} assets)`);
+    log.success(`Artifacts in: ${config.outAbs} (${assets.count()} assets)`);
   } finally {
     await closeSession(session);
   }

@@ -3,14 +3,14 @@ import { readFile } from "node:fs/promises";
 import { writeFileSafe } from "../util/fs.js";
 
 /**
- * Reescribe referencias a assets: reemplaza cada URL **absoluta** del `assetMap`
- * (clave) por su **ruta local relativa** desde `fromDir` hacia el valor del map
- * (que es relativo a la raíz de salida). Funciona sobre HTML y CSS por igual,
- * porque opera sobre el texto: matchea la URL donde aparezca (`src`, `srcset`,
- * `href`, `url(...)`, etc.).
+ * Rewrites asset references: replaces each **absolute** URL in the `assetMap`
+ * (key) with its **relative local path** from `fromDir` to the map's value
+ * (which is relative to the output root). Works on HTML and CSS alike, because
+ * it operates on the text: it matches the URL wherever it appears (`src`,
+ * `srcset`, `href`, `url(...)`, etc.).
  *
- * Las claves se reemplazan de más larga a más corta para no corromper URLs que
- * son prefijo de otra (p. ej. `a.png` vs `a.png?2x`).
+ * Keys are replaced from longest to shortest so as not to corrupt URLs that are
+ * a prefix of another (e.g. `a.png` vs `a.png?2x`).
  */
 export function rewriteRefs(
   content: string,
@@ -29,16 +29,16 @@ export function rewriteRefs(
   return out;
 }
 
-/** Ruta relativa POSIX (web) desde `fromDir` hacia `local` (ambos rel. a la raíz). */
+/** POSIX (web) relative path from `fromDir` to `local` (both rel. to the root). */
 function relPosix(fromDir: string, local: string): string {
   const rel = path.posix.relative(fromDir || ".", local);
   return rel || local;
 }
 
 /**
- * Inyecta `<base href="...">` en el `<head>` del HTML, SOLO si no hay ya un
- * `<base>`. Sirve de fallback para que los assets no descargados resuelvan
- * contra el sitio vivo cuando haya conexión.
+ * Injects `<base href="...">` into the HTML `<head>`, ONLY if there isn't
+ * already a `<base>`. Serves as a fallback so that undownloaded assets resolve
+ * against the live site when there's a connection.
  */
 export function injectBase(html: string, pageUrl: string): string {
   if (/<base\b/i.test(html)) return html;
@@ -57,9 +57,9 @@ function escapeAttr(s: string): string {
 }
 
 /**
- * Aplica la reescritura a los artefactos guardados: cada `html/<slug>.html`
- * (con `<base>` de fallback) y cada CSS de red/inline. Nunca aborta: si un
- * archivo no se puede reescribir, lo deja como estaba y registra en `warnings`.
+ * Applies the rewrite to the saved artifacts: each `html/<slug>.html` (with a
+ * fallback `<base>`) and each network/inline CSS. Never aborts: if a file can't
+ * be rewritten, it leaves it as-is and records it in `warnings`.
  */
 export async function rewriteCapturedAssets(
   outAbs: string,
@@ -68,24 +68,24 @@ export async function rewriteCapturedAssets(
   assetMap: Map<string, string>,
   warnings: string[],
 ): Promise<void> {
-  // HTML por página.
+  // HTML per page.
   for (const p of pages) {
     const file = path.join(outAbs, p.html);
     const fromDir = path.posix.dirname(toPosix(p.html));
     try {
       const original = await readFile(file, "utf8");
-      // NO inyectamos <base>: chocaba con los assets reescritos a rutas locales
-      // (los hacía resolver contra el dominio vivo → "antes" en blanco). Los
-      // refs no descargados ya quedaron absolutos (absolutizeAssetUrls) y cargan
-      // online por sí solos.
+      // We do NOT inject <base>: it clashed with assets rewritten to local paths
+      // (it made them resolve against the live domain → blank "before"). The
+      // undownloaded refs were already made absolute (absolutizeAssetUrls) and
+      // load online on their own.
       const rewritten = rewriteRefs(original, assetMap, fromDir);
       if (rewritten !== original) await writeFileSafe(file, rewritten);
     } catch (err) {
-      warnings.push(`reescritura html ${p.slug}: ${String(err).slice(0, 100)}`);
+      warnings.push(`html rewrite ${p.slug}: ${String(err).slice(0, 100)}`);
     }
   }
 
-  // CSS de red (css/<name>.css) e inline (css/inline/<slug>.css).
+  // Network CSS (css/<name>.css) and inline (css/inline/<slug>.css).
   const cssTargets: { file: string; fromDir: string }[] = [
     ...cssFileNames.map((name) => ({
       file: path.join(outAbs, "css", name),
@@ -102,7 +102,7 @@ export async function rewriteCapturedAssets(
       const rewritten = rewriteRefs(original, assetMap, t.fromDir);
       if (rewritten !== original) await writeFileSafe(t.file, rewritten);
     } catch {
-      // CSS inline puede no existir para una página; ignorar silenciosamente.
+      // inline CSS may not exist for a page; ignore silently.
     }
   }
 }

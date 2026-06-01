@@ -3,104 +3,104 @@ import { existsSync } from "node:fs";
 import { writeFileSafe } from "../util/fs.js";
 
 /**
- * Pre-escribe los reportes MD como esqueletos con headers + TODO para que
- * Claude los rellene. No sobrescribe si ya existen (para no pisar trabajo).
+ * Pre-writes the MD reports as skeletons with headers + TODO so that
+ * Claude fills them in. Does not overwrite if they already exist (to avoid clobbering work).
  */
 export async function writeReportSkeletons(outAbs: string, url: string): Promise<void> {
   const reportsDir = path.join(outAbs, "reports");
   const today = new Date().toISOString().slice(0, 10);
 
   const files: Record<string, string> = {
-    "site-overview.md": `# Resumen del sitio
+    "site-overview.md": `# Site overview
 
-> Sitio relevado: ${url}
-> Fecha: ${today}
+> Surveyed site: ${url}
+> Date: ${today}
 
-## ¿Qué es / qué hace?
-TODO (Claude): describí el propósito del producto a partir del HTML y las screenshots.
+## What is it / what does it do?
+TODO (Claude): describe the product's purpose based on the HTML and the screenshots.
 
-## Secciones / áreas principales
-TODO: lista de secciones detectadas (nav, dashboard, settings, etc.).
+## Main sections / areas
+TODO: list of detected sections (nav, dashboard, settings, etc.).
 
-## Audiencia y dominio
-TODO: tipo de usuario y rubro inferido.
+## Audience and domain
+TODO: type of user and inferred industry.
 `,
-    "visual-style.md": `# Estilo visual
+    "visual-style.md": `# Visual style
 
-> Fecha: ${today}
+> Date: ${today}
 
-## Layout y estructura
-TODO (Claude): grilla, densidad, jerarquía, uso del espacio.
+## Layout and structure
+TODO (Claude): grid, density, hierarchy, use of space.
 
 ## Color
-TODO: paleta, mood, contraste. (Ver tokens.json.)
+TODO: palette, mood, contrast. (See tokens.json.)
 
-## Tipografía
-TODO: familias, escala, pesos, sensación.
+## Typography
+TODO: families, scale, weights, feel.
 
-## Movimiento / animaciones
-TODO: lenguaje de movimiento (ver css/transitions.json y css/animations.json), hovers (css/hover-states.json).
+## Motion / animations
+TODO: motion language (see css/transitions.json and css/animations.json), hovers (css/hover-states.json).
 
-## Componentes recurrentes
-TODO: botones, cards, inputs, badges, modales.
+## Recurring components
+TODO: buttons, cards, inputs, badges, modals.
 `,
     "design-tokens.md": `# Design tokens
 
-> Fuente: tokens.json (frecuencias agregadas de computed styles).
-> Fecha: ${today}
+> Source: tokens.json (aggregated frequencies of computed styles).
+> Date: ${today}
 
-## Colores
-TODO (Claude): anotá roles (fondo, texto, acento, bordes) a partir de tokens.json.
+## Colors
+TODO (Claude): note roles (background, text, accent, borders) based on tokens.json.
 
-## Tipografía
-TODO: escala tipográfica y pesos.
+## Typography
+TODO: type scale and weights.
 
-## Spacing / radios / sombras
-TODO: escala de espaciado, radios y sombras inferidas.
+## Spacing / radii / shadows
+TODO: inferred spacing scale, radii and shadows.
 `,
-    "logo-analysis.md": `# Análisis del logo
+    "logo-analysis.md": `# Logo analysis
 
-> Candidatos: logo/candidates/  ·  logo/candidates.json
-> Fecha: ${today}
+> Candidates: logo/candidates/  ·  logo/candidates.json
+> Date: ${today}
 
-## Descripción
-TODO (Claude, VLM): describí el logo (tipo: wordmark/isotipo/combinado, colores, estilo).
+## Description
+TODO (Claude, VLM): describe the logo (type: wordmark/icon/combination, colors, style).
 
-## Veredicto de calidad
-TODO: ¿es básico/genérico? ¿usa fuente por defecto? ¿tiene concepto? (sí/no + por qué)
+## Quality verdict
+TODO: is it basic/generic? does it use a default font? does it have a concept? (yes/no + why)
 
-## Recomendación
-TODO: rediseñar / refinar / mantener.
+## Recommendation
+TODO: redesign / refine / keep.
 `,
-    "logo-prompt.md": `# Prompt para rediseño de logo (gpt-image)
+    "logo-prompt.md": `# Logo redesign prompt (gpt-image)
 
-> Se completa solo si el logo se evalúa como básico.
-> Fecha: ${today}
+> Only filled in if the logo is rated as basic.
+> Date: ${today}
 
-TODO (Claude): prompt afinado para gpt-image, listo para pegar a mano.
-Incluí: concepto de marca, estilo, paleta, tipografía, fondo transparente, variaciones.
+TODO (Claude): refined prompt for gpt-image, ready to paste by hand.
+Include: brand concept, style, palette, typography, transparent background, variations.
 `,
-    "redesign-brief.md": `# Brief de rediseño
+    "redesign-brief.md": `# Redesign brief
 
-> Fecha: ${today}
+> Date: ${today}
 
-## Dirección elegida
-TODO (Claude): revamp total vs refinamiento + estilo elegido por el usuario.
+## Chosen direction
+TODO (Claude): full revamp vs refinement + style chosen by the user.
 
-## Mejoras propuestas
-TODO: lista concreta de cambios hacia una UI más limpia y profesional.
+## Proposed improvements
+TODO: concrete list of changes toward a cleaner, more professional UI.
 
-## Inventario de componentes
-TODO: componentes a construir en el rediseño (React + Tailwind + motion).
+## Component inventory
+TODO: components to build in the redesign (React + Tailwind + motion).
 
-## Plan de movimiento (Framer Motion)
-TODO: mapear transitions/keyframes capturados a variants de \`motion\` (fadeUp, stagger, hover/tap, page transitions con AnimatePresence).
+## Motion plan (Framer Motion)
+TODO: map captured transitions/keyframes to \`motion\` variants (fadeUp, stagger, hover/tap, page transitions with AnimatePresence).
 `,
   };
 
   for (const [name, content] of Object.entries(files)) {
     const dest = path.join(reportsDir, name);
-    if (existsSync(dest)) continue; // no pisar
+    if (existsSync(dest)) continue; // don't clobber
     await writeFileSafe(dest, content);
   }
 }

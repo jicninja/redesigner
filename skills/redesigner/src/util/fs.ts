@@ -2,13 +2,13 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
-/** Crea un directorio (recursivo) si no existe. */
+/** Creates a directory (recursively) if it does not exist. */
 export async function ensureDir(dir: string): Promise<string> {
   await mkdir(dir, { recursive: true });
   return dir;
 }
 
-/** Escribe un archivo creando los directorios padre necesarios. */
+/** Writes a file, creating any necessary parent directories. */
 export async function writeFileSafe(
   filePath: string,
   data: string | Buffer,
@@ -17,13 +17,13 @@ export async function writeFileSafe(
   await writeFile(filePath, data);
 }
 
-/** Escribe JSON con indentación. */
+/** Writes JSON with indentation. */
 export async function writeJson(filePath: string, value: unknown): Promise<void> {
   await writeFileSafe(filePath, JSON.stringify(value, null, 2));
 }
 
 /**
- * Convierte un pathname de URL en un slug seguro para nombre de archivo.
+ * Converts a URL pathname into a filename-safe slug.
  * `/settings/profile` -> `settings__profile`; `/` -> `home`.
  */
 export function slugFromPathname(pathname: string): string {
@@ -37,7 +37,7 @@ export function slugFromPathname(pathname: string): string {
   return slug || "page";
 }
 
-/** Hash corto y estable de un string (para deduplicar por contenido/URL). */
+/** Short, stable hash of a string (for deduplicating by content/URL). */
 export function shortHash(input: string): string {
   return createHash("sha1").update(input).digest("hex").slice(0, 10);
 }

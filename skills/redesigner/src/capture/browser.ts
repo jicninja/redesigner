@@ -12,7 +12,7 @@ export interface Session {
   storageStatePath: string;
 }
 
-/** Antigüedad máxima del storageState reutilizable (ms): 12 horas. */
+/** Maximum age of the reusable storageState (ms): 12 hours. */
 const STORAGE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
 export function storageStatePath(config: CaptureConfig): string {
@@ -30,8 +30,8 @@ async function isFreshStorageState(p: string): Promise<boolean> {
 }
 
 /**
- * Lanza Chromium con un contexto realista. Reutiliza el storageState previo
- * si existe y es reciente (evita re-login y captchas repetidos).
+ * Launches Chromium with a realistic context. Reuses the previous storageState
+ * if it exists and is recent (avoids re-login and repeated captchas).
  */
 export async function launchSession(config: CaptureConfig): Promise<Session> {
   const ssPath = storageStatePath(config);
@@ -43,7 +43,7 @@ export async function launchSession(config: CaptureConfig): Promise<Session> {
   });
 
   const reuse = await isFreshStorageState(ssPath);
-  if (reuse) log.info("Reutilizando sesión guardada (storageState).");
+  if (reuse) log.info("Reusing saved session (storageState).");
 
   const context = await browser.newContext({
     viewport: config.viewport,
@@ -57,10 +57,10 @@ export async function launchSession(config: CaptureConfig): Promise<Session> {
   context.setDefaultTimeout(config.pageTimeout);
   context.setDefaultNavigationTimeout(config.pageTimeout);
 
-  // Shim: tsx/esbuild inyecta llamadas a `__name` al stringificar funciones
-  // nombradas que se pasan a page.evaluate. Lo definimos en el navegador.
+  // Shim: tsx/esbuild injects calls to `__name` when stringifying named
+  // functions passed to page.evaluate. We define it in the browser.
   await context.addInitScript(() => {
-    // @ts-expect-error definido en el contexto del navegador
+    // @ts-expect-error defined in the browser context
     window.__name = window.__name || ((fn) => fn);
   });
 
