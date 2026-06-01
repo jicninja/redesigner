@@ -31,6 +31,20 @@ or *"survey the style of …"*, *"scrape this site"*, *"redisgner …"*.
 
 ---
 
+## Example — redesigning its own repo page
+
+redisgner was pointed at **its own GitHub repo page** and asked to redesign it. The result keeps the exact same page (repo header, tabs, file list, README panel, About sidebar) but reskins it with a dark **glassmorphism** language: frosted translucent panels with `backdrop-blur`, a soft ambient blue glow, a single brand accent (`#3b82f6`) and tasteful Framer Motion — rebranded *redesigner*.
+
+🔗 **Live demo: [redesigner-glass.surge.sh](https://redesigner-glass.surge.sh)**
+
+| Before — the GitHub repo page | After — glassmorphism restyle |
+| :---: | :---: |
+| ![Before](docs/example/before.png) | ![After](docs/example/after.png) |
+
+*Same structure and content, fully re-skinned. Produced end to end with redisgner (capture → analysis → Claude design with Tailwind v4 + Framer Motion), then deployed to Surge.*
+
+---
+
 ## How it works (pipeline)
 
 1. **Capture** (Playwright, read-only) — crawls same-origin **without touching anything destructive** (skips logout/delete/checkout/…), and per page saves: screenshots (full + viewport), HTML, CSS (via network interception, CORS-immune), sampled computed styles, hovers/focus (pixels + diff), `transitions` and `@keyframes`. Detects the **logo** and aggregates **design tokens**.
@@ -138,6 +152,20 @@ rediseñá este sitio: https://app.ejemplo.com
 ```
 
 o *"relevá el estilo de …"*, *"scrapeá este sitio"*, *"redisgner …"*.
+
+---
+
+## Ejemplo — rediseñando su propia página del repo
+
+Apuntamos redisgner a **su propia página de GitHub** y le pedimos que la rediseñe. El resultado mantiene exactamente la misma página (header del repo, tabs, lista de archivos, panel del README, sidebar About) pero la reskinea con un lenguaje **glassmorphism** oscuro: paneles de vidrio esmerilado translúcido con `backdrop-blur`, un glow azul ambiental suave, un único acento de marca (`#3b82f6`) y Framer Motion con mesura — rebrandeado *redesigner*.
+
+🔗 **Demo en vivo: [redesigner-glass.surge.sh](https://redesigner-glass.surge.sh)**
+
+| Antes — la página del repo en GitHub | Después — restyle glassmorphism |
+| :---: | :---: |
+| ![Antes](docs/example/before.png) | ![Después](docs/example/after.png) |
+
+*Misma estructura y contenido, reskineado por completo. Hecho de punta a punta con redisgner (capture → análisis → Claude design con Tailwind v4 + Framer Motion) y deployado a Surge.*
 
 ---
 
