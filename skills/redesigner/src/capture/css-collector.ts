@@ -35,24 +35,38 @@ export class CssCollector {
     return [...this.sheets.entries()].map(([url, css]) => ({ url, css }));
   }
 
+  /** Nombre local estable de una hoja: `<host>__<base>__<hash>.css`. */
+  private localName(url: string): string {
+    let host = "inline";
+    let base = "sheet";
+    try {
+      const u = new URL(url);
+      host = u.hostname.replace(/[^a-z0-9.-]/gi, "-");
+      base = path.basename(u.pathname).replace(/\.css$/i, "") || "sheet";
+    } catch {
+      /* noop */
+    }
+    return `${host}__${base}__${shortHash(url)}.css`;
+  }
+
   /** Escribe cada stylesheet a disco con nombre estable `<host>__<hash>.css`. */
   async writeAll(cssDir: string): Promise<string[]> {
     const written: string[] = [];
     for (const [url, css] of this.sheets) {
-      let host = "inline";
-      let base = "sheet";
-      try {
-        const u = new URL(url);
-        host = u.hostname.replace(/[^a-z0-9.-]/gi, "-");
-        base = path.basename(u.pathname).replace(/\.css$/i, "") || "sheet";
-      } catch {
-        /* noop */
-      }
-      const name = `${host}__${base}__${shortHash(url)}.css`;
+      const name = this.localName(url);
       const file = path.join(cssDir, name);
       await writeFileSafe(file, `/* source: ${url} */\n${css}`);
       written.push(name);
     }
     return written;
+  }
+
+  /** Mapa urlAbsoluta -> ruta local rel al out (`css/<name>`), para reescritura. */
+  map(): Map<string, string> {
+    const m = new Map<string, string>();
+    for (const url of this.sheets.keys()) {
+      m.set(url, path.posix.join("css", this.localName(url)));
+    }
+    return m;
   }
 }
