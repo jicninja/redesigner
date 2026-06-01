@@ -1,5 +1,5 @@
 import path from "node:path";
-import { readFile } from "node:fs/promises";
+import { readFile, cp } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { writeFileSafe } from "../util/fs.js";
 import { log } from "../util/log.js";
@@ -7,6 +7,7 @@ import { tokensToThemeCss } from "./theme.js";
 import { buildMotionLib } from "./motion-seed.js";
 import type { DesignTokens } from "../capture/tokens.js";
 import { slugFromPathname } from "../util/fs.js";
+import { compareShellSource, originalDataSource } from "./compare-shell.js";
 
 export interface ScaffoldOptions {
   out: string;
@@ -63,6 +64,8 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
 
   const root = path.resolve(process.cwd(), opts.out, "redesign");
   await emitReactProject(root, tokens, manifest, transitions, anims);
+  await copyOriginals(artifactsAbs, root);
+  await emitCompareShell(root, manifest);
   log.success(`Scaffold del rediseño en: ${root}`);
   log.info("Próximo paso (Claude design): completar componentes/páginas guiado por reports/redesign-brief.md.");
 }
@@ -170,10 +173,13 @@ export default defineConfig({
 import { createRoot } from "react-dom/client";
 import "./styles/theme.css";
 import { App } from "./App";
+import { CompareShell } from "./CompareShell";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <CompareShell>
+      <App />
+    </CompareShell>
   </StrictMode>,
 );
 `,
@@ -354,6 +360,31 @@ npm run dev
 Completá componentes y páginas siguiendo \`../redesigner-artifacts/reports/redesign-brief.md\`.
 `,
   );
+}
+
+/** Emite el shell de comparación (CompareShell.tsx) + el módulo de datos del original. */
+async function emitCompareShell(
+  root: string,
+  manifest: { pages: { url: string; slug: string; title: string }[] },
+): Promise<void> {
+  await writeFileSafe(path.join(root, "src", "CompareShell.tsx"), compareShellSource());
+  await writeFileSafe(
+    path.join(root, "src", "lib", "original.ts"),
+    originalDataSource(
+      manifest.pages.map((p) => ({ slug: p.slug, title: p.title, url: p.url })),
+    ),
+  );
+}
+
+/** Copia html/+assets/+css/ del relevamiento a redesign/public/_original/. */
+async function copyOriginals(artifactsAbs: string, root: string): Promise<void> {
+  const dest = path.join(root, "public", "_original");
+  for (const dir of ["html", "assets", "css"]) {
+    const src = path.join(artifactsAbs, dir);
+    if (existsSync(src)) {
+      await cp(src, path.join(dest, dir), { recursive: true });
+    }
+  }
 }
 
 function pascal(slug: string): string {

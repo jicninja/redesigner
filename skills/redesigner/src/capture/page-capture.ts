@@ -82,6 +82,45 @@ async function autoScroll(page: Page, maxSteps = 12): Promise<void> {
   }, maxSteps);
 }
 
+/**
+ * Antes de serializar el HTML, normaliza a URL ABSOLUTA las referencias a
+ * assets (img.src, source/img srcset, link.href). Así el HTML guardado matchea
+ * el `Map` del AssetCollector (que tiene URLs absolutas) para la reescritura por
+ * texto. Las propiedades `.src`/`.href` ya devuelven la URL absoluta resuelta.
+ */
+async function absolutizeAssetUrls(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const abs = (v: string): string => {
+      try {
+        return new URL(v, document.baseURI).href;
+      } catch {
+        return v;
+      }
+    };
+    document.querySelectorAll("img[src]").forEach((el) => {
+      el.setAttribute("src", (el as HTMLImageElement).src);
+    });
+    document.querySelectorAll("img[srcset], source[srcset]").forEach((el) => {
+      const ss = el.getAttribute("srcset");
+      if (!ss) return;
+      const fixed = ss
+        .split(",")
+        .map((part) => {
+          const seg = part.trim();
+          if (!seg) return seg;
+          const sp = seg.split(/\s+/);
+          sp[0] = abs(sp[0]);
+          return sp.join(" ");
+        })
+        .join(", ");
+      el.setAttribute("srcset", fixed);
+    });
+    document.querySelectorAll("link[href]").forEach((el) => {
+      el.setAttribute("href", (el as HTMLLinkElement).href);
+    });
+  });
+}
+
 /** CSS inline (<style>, atributos style) + cssRules same-origin accesibles. */
 async function collectInlineCss(page: Page): Promise<string> {
   return page.evaluate(() => {
@@ -151,6 +190,13 @@ export async function capturePage(
     fullPage: true,
   });
   await page.screenshot({ path: path.join(outAbs, screenshotViewport) });
+
+  // Absolutizar refs a assets para que el HTML guardado matchee el AssetCollector.
+  try {
+    await absolutizeAssetUrls(page);
+  } catch {
+    /* no aborta la captura si falla */
+  }
 
   const html = await page.content();
   await writeFileSafe(path.join(outAbs, "html", `${slug}.html`), html);
