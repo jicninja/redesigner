@@ -5,10 +5,9 @@ import { writeFileSafe } from "../util/fs.js";
 import { log } from "../util/log.js";
 import { tokensToThemeCss } from "./theme.js";
 import { buildMotionLib } from "./motion-seed.js";
-import { compareShellSource, originalDataSource } from "./compare-shell.js";
 import type { DesignTokens } from "../capture/tokens.js";
 import { slugFromPathname } from "../util/fs.js";
-import { buildSplitView } from "./split-view.js";
+import { compareShellSource, originalDataSource } from "./compare-shell.js";
 
 export interface ScaffoldOptions {
   out: string;
@@ -66,7 +65,7 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
   const root = path.resolve(process.cwd(), opts.out, "redesign");
   await emitReactProject(root, tokens, manifest, transitions, anims);
   await copyOriginals(artifactsAbs, root);
-  await emitCompareShell(root, artifactsAbs, manifest);
+  await emitCompareShell(root, manifest);
   log.success(`Scaffold del rediseño en: ${root}`);
   log.info("Próximo paso (Claude design): completar componentes/páginas guiado por reports/redesign-brief.md.");
 }
@@ -174,14 +173,13 @@ export default defineConfig({
 import { createRoot } from "react-dom/client";
 import "./styles/theme.css";
 import { App } from "./App";
-import { SplitView } from "./pages/SplitView";
-
-const isSplit =
-  typeof location !== "undefined" && location.hash === "#/split";
+import { CompareShell } from "./CompareShell";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {isSplit ? <SplitView /> : <App />}
+    <CompareShell>
+      <App />
+    </CompareShell>
   </StrictMode>,
 );
 `,
@@ -334,11 +332,6 @@ export function ${comp}() {
   }
 
   await w(
-    "src/pages/SplitView.tsx",
-    buildSplitView(manifest.pages.map((p) => ({ slug: p.slug, title: p.title }))),
-  );
-
-  await w(
     "src/assets/README.md",
     "Dejá acá el logo rediseñado (logo.png/svg) que generaste a mano con gpt-image.\n",
   );
@@ -369,38 +362,18 @@ Completá componentes y páginas siguiendo \`../redesigner-artifacts/reports/red
   );
 }
 
-/**
- * Genera el "split mode" embebido: `CompareShell` (vista default), el módulo de
- * datos de páginas originales, y copia los artefactos capturados a
- * `public/_original/` para servir el lado "antes" offline.
- */
+/** Emite el shell de comparación (CompareShell.tsx) + el módulo de datos del original. */
 async function emitCompareShell(
   root: string,
-  artifactsAbs: string,
   manifest: { pages: { url: string; slug: string; title: string }[] },
 ): Promise<void> {
-  const w = (rel: string, content: string) =>
-    writeFileSafe(path.join(root, rel), content);
-
-  await w("src/CompareShell.tsx", compareShellSource());
-  await w(
-    "src/lib/original.ts",
+  await writeFileSafe(path.join(root, "src", "CompareShell.tsx"), compareShellSource());
+  await writeFileSafe(
+    path.join(root, "src", "lib", "original.ts"),
     originalDataSource(
       manifest.pages.map((p) => ({ slug: p.slug, title: p.title, url: p.url })),
     ),
   );
-
-  // Copiar artefactos del original a public/_original/ (offline).
-  const dest = path.join(root, "public", "_original");
-  for (const sub of ["html", "assets", "css"]) {
-    const from = path.join(artifactsAbs, sub);
-    if (!existsSync(from)) continue;
-    try {
-      await cp(from, path.join(dest, sub), { recursive: true });
-    } catch (err) {
-      log.warn(`No se pudo copiar ${sub} a public/_original/: ${String(err).slice(0, 100)}`);
-    }
-  }
 }
 
 /** Copia html/+assets/+css/ del relevamiento a redesign/public/_original/. */

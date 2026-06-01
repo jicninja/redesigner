@@ -100,7 +100,7 @@ npm --prefix "SKILL_DIR" run scaffold -- --out "PROYECTO" --artifacts "PROYECTO/
 ```
 Esto crea `PROYECTO/redesign/` (React 19 + Vite 8 + Tailwind v4 + `motion@12`, tokens en `src/styles/theme.css`, variants en `src/lib/motion.ts`, stubs de componentes/páginas).
 
-El scaffold también genera el **split mode** embebido: `src/CompareShell.tsx` (la **vista por default**) envuelve la app y muestra el rediseño; un toggle "Comparar antes / ahora" revela el sitio **original** con una cortina que sigue el mouse. El lado "antes" se sirve **offline** desde `public/_original/` (copiado de los artefactos: `html/`, `assets/`, `css/`); el lado "ahora" es el rediseño real. El subagente NO debe romper esto: que `main.tsx` siga renderizando `<CompareShell><App/></CompareShell>`.
+El scaffold también genera el **split mode** embebido: `src/CompareShell.tsx`, un shell que **envuelve la app** (`main.tsx` monta `<CompareShell><App/></CompareShell>`). Compara el sitio **original** (lado "antes", iframe servido **offline** desde `public/_original/` — copiado de los artefactos `html/`, `assets/`, `css/`; lista de páginas en `src/lib/original.ts`) contra el **rediseño real** (lado "ahora", el propio `App` renderizado), con una cortina que por **default sigue el mouse** y se puede **fijar** (botón 🖱️ en la barra o clic en el handle ⇔; al fijar, el handle se arrastra y se libera el hover/click sobre el rediseño). El **scroll** y la **vista** (dropdown ↔ ruta del rediseño, vía `route` en `src/lib/original.ts`) se sincronizan entre ambos lados. Por **default** muestra el split; **doble click** = solo el diseño nuevo a pantalla completa (oculta la barra), otro doble click vuelve al split. El subagente NO debe romper el montaje de `CompareShell` ni `public/_original/`.
 
 Luego **delegá el build del rediseño a un subagente** (Agent tool) para ahorrar contexto. El subagente debe:
 - Usar el skill `frontend-design`.
@@ -120,12 +120,8 @@ Luego **delegá el build del rediseño a un subagente** (Agent tool) para ahorra
    cd "PROYECTO/redesign" && npm run dev   # (en background) o npm run build && npm run preview
    ```
    Tomá capturas (con el Playwright del propio skill o el skill `run`) de las vistas principales en desktop y mobile, y mostráselas al usuario con Read. Si no, decile la URL local (`http://localhost:5173`) para que lo mire.
-1c. **Split antes/ahora.** Con el rediseño levantado, abrí la sub-vista de comparación:
-   ```bash
-   open "http://localhost:5173/#/split"
-   ```
-   Explicale al usuario: **Split** es el modo por defecto y la máscara **sigue el mouse**; los botones `[Antes] [Split] [Ahora]` fijan un lado (Antes/Ahora quedan interactivos); **doble click** muestra solo el diseño nuevo a pantalla completa (oculta la barra) y otro doble click vuelve al Split; el dropdown elige qué página original comparar. El lado "antes" es el HTML original copiado a `redesign/public/_original/`; el "ahora" es la app viva.
-   - La app abre en el **CompareShell** (vista default): se ve el rediseño, y con el botón "Comparar antes / ahora" (o el dropdown de páginas) el usuario revela el **original offline** con la cortina (Antes / Split / Ahora; doble click cierra). No hay artefacto `split.html` aparte: el comparador vive dentro del rediseño.
+1c. **Split antes/ahora.** Con el rediseño levantado (`http://localhost:5173`), el comparador `CompareShell` ya está embebido: la app arranca mostrando el **split** sobre el rediseño.
+   Explicale al usuario: **Split** es el modo por defecto y la cortina por **default sigue el mouse**; con el botón 🖱️ (o clic en el handle ⇔) la **fijás** para hacer hover/click sobre el rediseño, y la reposicionás **arrastrando** el handle. Los botones `[Antes] [Split] [Ahora]` fijan un lado (en Antes el original queda interactivo); **doble click** muestra solo el diseño nuevo a pantalla completa y otro doble click vuelve al Split; el dropdown elige qué página original comparar y **navega también el rediseño**. El **scroll** se sincroniza entre lados. El lado "antes" es el HTML original copiado a `redesign/public/_original/`; el "ahora" es el rediseño real renderizado. No hay artefacto `split.html` aparte ni ruta especial: el comparador envuelve la app.
 2. **Preguntá si le gusta** (`AskUserQuestion` o abierto): ¿aprobado o querés cambios?
 3. **Si quiere cambios**: tomá su prompt/feedback y **volvé a delegar al subagente** (paso 9) con ese feedback + lo ya construido. Repetí el ciclo *build → mostrar → feedback* las veces que haga falta.
 4. **Solo cuando el usuario apruebe**, pasá a los exports.
@@ -151,5 +147,4 @@ Así el contexto de esta conversación queda limpio: el mock navegable (paso 4),
 - **Sin credenciales**: el motor nunca recibe ni pide usuario/contraseña. El login, si existe, es **manual** en el navegador visible (`--no-headless`). Nunca pidas credenciales por el chat.
 - Preferí `preview.html` / el mock navegable sobre cargar muchas imágenes al contexto.
 - El mock navegable, la auditoría UX, el build del rediseño y los exports van **por subagente**.
-- El **split** (comparación antes/ahora) es una **sub-vista de `redesign/`** (`#/split`), no un artefacto: usa el HTML original copiado a `public/_original/` (con los assets descargados en la captura) y la app viva como "ahora". Necesita el server del rediseño levantado.
-- El **split mode** es una subvista del rediseño (no un artefacto): necesita el server del rediseño levantado (`npm run dev`). El lado "antes" sale de `public/_original/` (lo copia el scaffold de los artefactos); la captura ahora **descarga imágenes/fuentes** (`assets/`) para que ese "antes" se vea fiel offline.
+- El **split** (comparación antes/ahora) está **embebido en `redesign/`** vía `CompareShell` que envuelve la app, no es un artefacto aparte: usa el HTML original copiado a `public/_original/` (con los `assets/` descargados en la captura) y el rediseño real como "ahora". Necesita el server del rediseño levantado (`npm run dev`).

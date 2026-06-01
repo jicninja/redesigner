@@ -74,7 +74,11 @@ export async function rewriteCapturedAssets(
     const fromDir = path.posix.dirname(toPosix(p.html));
     try {
       const original = await readFile(file, "utf8");
-      const rewritten = injectBase(rewriteRefs(original, assetMap, fromDir), p.url);
+      // NO inyectamos <base>: chocaba con los assets reescritos a rutas locales
+      // (los hacía resolver contra el dominio vivo → "antes" en blanco). Los
+      // refs no descargados ya quedaron absolutos (absolutizeAssetUrls) y cargan
+      // online por sí solos.
+      const rewritten = rewriteRefs(original, assetMap, fromDir);
       if (rewritten !== original) await writeFileSafe(file, rewritten);
     } catch (err) {
       warnings.push(`reescritura html ${p.slug}: ${String(err).slice(0, 100)}`);
