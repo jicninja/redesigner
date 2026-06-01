@@ -1,5 +1,117 @@
 # redisgner
 
+**A [Claude Code](https://claude.com/claude-code) skill to crawl a web/app and redesign it with Claude.**
+
+Hybrid model: a **Node/Playwright engine** (deterministic and **read-only**) captures everything that defines a site's style; **Claude** (with vision) does the analysis, the UX audit, the logo, the questions and the redesign. The heavy steps (navigable mock, audit, redesign build, exports) are delegated to subagents to save context.
+
+> The name is intentional: **re-dis(e)gner**. It surveys a site and leaves it ready to redesign.
+
+*(Español más abajo ↓)*
+
+---
+
+## Install
+
+It's a Claude Code plugin. From Claude Code:
+
+```text
+/plugin marketplace add jicninja/redisgner
+/plugin install redisgner@redisgner
+```
+
+**Requirements:** Node ≥ 20 and npm. On the **first run**, the skill installs its dependencies and downloads Playwright's Chromium automatically (`npm install` + `postinstall`).
+
+Then just ask Claude:
+
+```text
+redesign this site: https://app.example.com
+```
+
+or *"survey the style of …"*, *"scrape this site"*, *"redisgner …"*.
+
+---
+
+## How it works (pipeline)
+
+1. **Capture** (Playwright, read-only) — crawls same-origin **without touching anything destructive** (skips logout/delete/checkout/…), and per page saves: screenshots (full + viewport), HTML, CSS (via network interception, CORS-immune), sampled computed styles, hovers/focus (pixels + diff), `transitions` and `@keyframes`. Detects the **logo** and aggregates **design tokens**.
+2. **preview.html** — lightweight gallery to eyeball what was scraped, without spending model context.
+3. **Navigable mock** (subagent) — recreates the surveyed site view by view, so you can walk through it before deciding.
+4. **Analysis** (Claude) — reports in `reports/`: overview, visual style, design tokens, logo.
+5. **UX audit** (subagent, senior designer role) — Nielsen heuristics, hierarchy, consistency, accessibility/contrast, states, and quick wins vs opportunities.
+6. **Logo** — if it's generic, it builds a **prompt for gpt-image** that you run yourself (no API, no cost).
+7. **Claude design** (subagent with the `frontend-design` skill) — scaffolds **React 19 + Vite + Tailwind v4 + Framer Motion** seeded with the tokens, and Claude fills in components and pages.
+8. **Show + iterate** — mandatory gate: the redesign is shown and iterated by prompt **until you approve**, before exporting.
+9. **Exports** (subagent, optional, only after approval) — static HTML mock, **Figma** (`html.to.design` + `tokens.figma.json` for Tokens Studio) and **Pencil** (.pen via MCP).
+
+`redesign/` (the React project) is the **source of truth** for exports.
+
+---
+
+## Security
+
+- **MANUAL login, no credentials.** The engine **never** receives or asks for a username/password. If the site has a login, a Chromium window opens (`--no-headless`) and **you log in by hand**; the engine detects on its own when you're in and continues. There are no credential flags or env vars — by design.
+- **Read-only.** The crawler does not delete, edit or submit forms (except the login you do yourself). It skips destructive links.
+- Always use a **test account**, never a production one.
+- Session cookies stay only in the local artifacts (`.auth/`, gitignored) — never published.
+
+---
+
+## Manual engine usage (optional)
+
+Beyond the skill, the engine can be run by hand from `skills/redisgner/`:
+
+```bash
+cd skills/redisgner
+npm install                 # first time (downloads Chromium)
+
+# Survey (with a visible browser in case there's a manual login)
+npm run capture -- --url https://example.com --out ./redisgner-artifacts --max-pages 25 --no-headless
+
+# Scaffold the redesign (React) and, optionally, the HTML mock
+npm run scaffold -- --out . --artifacts ./redisgner-artifacts
+npm run scaffold -- --out . --artifacts ./redisgner-artifacts --target html
+```
+
+**`capture` flags:** `--url` (req.), `--login-url`, `--out`, `--max-pages`, `--viewport WxH`, `--no-headless`, `--capture-trace`, `--page-timeout <ms>`.
+**`scaffold` flags:** `--out` (req.), `--artifacts`, `--target react|html`.
+
+---
+
+## Artifacts (`redisgner-artifacts/`)
+
+```text
+manifest.json   preview.html   tokens.json
+screenshots/    html/          css/{computed,inline,transitions.json,animations.json,hover-states.json}
+logo/{logo.png, candidates/, candidates.json}
+reports/{site-overview, visual-style, design-tokens, logo-analysis, logo-prompt, redesign-brief, uiux-expert-review}.md
+```
+
+They are generated in the **project where you invoke** the skill, not in the plugin repo.
+
+---
+
+## Repo structure
+
+```text
+.claude-plugin/{plugin.json, marketplace.json}   ← marketplace + plugin
+skills/redisgner/
+  SKILL.md                                        ← orchestration (what Claude reads)
+  package.json, bin/, src/                        ← Node/Playwright engine
+```
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
+
+<br>
+
+---
+---
+
+<br>
+
+# redisgner (Español)
+
 **Skill de [Claude Code](https://claude.com/claude-code) para relevar una web/app y rediseñarla con Claude.**
 
 Modelo híbrido: un **motor Node/Playwright** (determinístico y de **solo lectura**) captura todo lo que define el estilo de un sitio; **Claude** (con visión) hace el análisis, la auditoría UX, el logo, las preguntas y el rediseño. Los pasos pesados (mock navegable, auditoría, build del rediseño, exports) se delegan a subagentes para no gastar contexto.
