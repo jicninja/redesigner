@@ -1,0 +1,15 @@
+node_modules/
+*.log
+.DS_Store
+
+# Artefactos de captura y outputs de ejemplo (se generan en el proyecto donde se
+# invoca la skill, nunca acá) — nunca commitear
+redisgner-artifacts/
+redesign/
+redesign-html/
+dist/
+*.tsbuildinfo
+
+# Sesiones de Playwright (pueden contener cookies de auth) — nunca commitear
+.auth/
+storageState.json

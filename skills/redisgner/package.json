@@ -1,0 +1,32 @@
+{
+  "name": "redisgner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Releva una web (Playwright) y prepara un rediseño con Claude (React + Tailwind + Framer Motion), Pencil, mock HTML y Figma.",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "redisgner": "bin/capture.ts"
+  },
+  "scripts": {
+    "capture": "tsx bin/capture.ts capture",
+    "scaffold": "tsx bin/capture.ts scaffold",
+    "postinstall": "playwright install chromium",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^15.0.0",
+    "consola": "^3.4.2",
+    "css-tree": "^3.2.1",
+    "playwright": "^1.60.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/css-tree": "^2.3.10",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
