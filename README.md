@@ -33,15 +33,23 @@ or *"survey the style of …"*, *"scrape this site"*, *"redesigner …"*.
 
 ## Example — redesigning its own repo page
 
-redesigner was pointed at **its own GitHub repo page** and asked to redesign it. The result keeps the exact same page (repo header, tabs, file list, README panel, About sidebar) but reskins it with a dark **glassmorphism** language: frosted translucent panels with `backdrop-blur`, a soft ambient blue glow, a single brand accent (`#3b82f6`) and tasteful Framer Motion — rebranded *redesigner*.
+redesigner was pointed at **its own GitHub repo page** and asked to redesign it — **twice, in two very different styles**. Both keep the exact same page (repo header, tabs, file list, README panel, About sidebar) and only swap the skin.
 
-🔗 **Live demo: [redesigner-glass.surge.sh](https://redesigner-glass.surge.sh)**
+**Before** — the plain GitHub repo page:
 
-| Before — the GitHub repo page | After — glassmorphism restyle |
-| :---: | :---: |
-| ![Before](docs/example/before.png) | ![After](docs/example/after.png) |
+![Before](docs/example/before.png)
 
-*Same structure and content, fully re-skinned. Produced end to end with redesigner (capture → analysis → Claude design with Tailwind v4 + Framer Motion), then deployed to Surge.*
+**After ① — dark glassmorphism** · 🔗 **[redesigner-glass.surge.sh](https://redesigner-glass.surge.sh)**
+Frosted translucent panels with `backdrop-blur`, a soft ambient blue glow and a single brand accent (`#3b82f6`).
+
+![Glassmorphism restyle](docs/example/after.png)
+
+**After ② — cyberpunk / neon** · 🔗 **[redesigner-cyber.surge.sh](https://redesigner-cyber.surge.sh)**
+Neon cyan + magenta on near-black, glowing borders, HUD corner brackets, CRT scanlines, angular clipped chrome and glitch micro-interactions.
+
+![Cyberpunk restyle](docs/example/cyber-after.png)
+
+*Same structure and content, two full re-skins — change only the design tokens. Produced end to end with redesigner (capture → analysis → Claude design with Tailwind v4 + Framer Motion), then deployed to Surge.*
 
 ---
 
@@ -157,15 +165,23 @@ o *"relevá el estilo de …"*, *"scrapeá este sitio"*, *"redesigner …"*.
 
 ## Ejemplo — rediseñando su propia página del repo
 
-Apuntamos redesigner a **su propia página de GitHub** y le pedimos que la rediseñe. El resultado mantiene exactamente la misma página (header del repo, tabs, lista de archivos, panel del README, sidebar About) pero la reskinea con un lenguaje **glassmorphism** oscuro: paneles de vidrio esmerilado translúcido con `backdrop-blur`, un glow azul ambiental suave, un único acento de marca (`#3b82f6`) y Framer Motion con mesura — rebrandeado *redesigner*.
+Apuntamos redesigner a **su propia página de GitHub** y le pedimos que la rediseñe — **dos veces, en dos estilos bien distintos**. Ambos mantienen exactamente la misma página (header del repo, tabs, lista de archivos, panel del README, sidebar About) y solo cambian la piel.
 
-🔗 **Demo en vivo: [redesigner-glass.surge.sh](https://redesigner-glass.surge.sh)**
+**Antes** — la página del repo en GitHub, pelada:
 
-| Antes — la página del repo en GitHub | Después — restyle glassmorphism |
-| :---: | :---: |
-| ![Antes](docs/example/before.png) | ![Después](docs/example/after.png) |
+![Antes](docs/example/before.png)
 
-*Misma estructura y contenido, reskineado por completo. Hecho de punta a punta con redesigner (capture → análisis → Claude design con Tailwind v4 + Framer Motion) y deployado a Surge.*
+**Después ① — glassmorphism oscuro** · 🔗 **[redesigner-glass.surge.sh](https://redesigner-glass.surge.sh)**
+Paneles de vidrio esmerilado translúcido con `backdrop-blur`, un glow azul ambiental suave y un único acento de marca (`#3b82f6`).
+
+![Restyle glassmorphism](docs/example/after.png)
+
+**Después ② — cyberpunk / neon** · 🔗 **[redesigner-cyber.surge.sh](https://redesigner-cyber.surge.sh)**
+Neon cyan + magenta sobre negro, bordes con glow, corner-brackets tipo HUD, scanlines CRT, chrome angular recortado y micro-glitches.
+
+![Restyle cyberpunk](docs/example/cyber-after.png)
+
+*Misma estructura y contenido, dos reskins completos — cambian solo los design tokens. Hecho de punta a punta con redesigner (capture → análisis → Claude design con Tailwind v4 + Framer Motion) y deployado a Surge.*
 
 ---
 
