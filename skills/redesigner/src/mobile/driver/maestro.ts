@@ -60,7 +60,9 @@ export function runFlow(opts: RunFlowOptions): Promise<RunFlowResult> {
  * Returns raw stdout, or null if Maestro can't produce it. Never throws.
  */
 export async function runHierarchy(device: string): Promise<string | null> {
-  const r = await run(maestroCmd(), ["hierarchy", "--device", device]);
+  // `--device` is a GLOBAL maestro option: it must precede the subcommand. The `hierarchy`
+  // subcommand itself rejects `--device`, so it goes before it (unlike `test --device`).
+  const r = await run(maestroCmd(), ["--device", device, "hierarchy"]);
   if (r.code !== 0 || !r.stdout.trim()) return null;
   return r.stdout;
 }

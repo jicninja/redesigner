@@ -166,8 +166,16 @@ The engine is a thin CLI; call it via Bash and parse the **one JSON line** it pr
 ### M.2 Authoring + running flows (the loop)
 You need the app's **appId** (Android package / iOS bundleId) — ask, or read it from the project (`app.config.*`, `AndroidManifest`, etc.). Flows are small YAML files you author under a working dir (e.g. `PROJECT/redesigner-flows/`). Run with `--watch` so the human can see the device and do the manual login.
 
-1. **See the state.** First author a tiny flow that captures the current screen without restarting (`appId` + `- takeScreenshot: 010_current`). Run it, Read the screenshot. If it's a splash/login, ask the user to get the app to the screen to survey (log in / land on home), then continue.
-2. **Survey the screens.** Author a flow that walks the main navigation, a `takeScreenshot` per screen. Locators: prefer **visible text** (`tapOn: "Pendientes"`), fall back to a **relative point** for icon-only controls (`tapOn: { point: "17%, 8%" }` for a top-left hamburger). Put reliable text taps first and risky point taps last (Maestro saves screenshots taken before any failing step).
+1. **Inspect first (read-only, no flow).** Before authoring anything, dump the **current** screen's view hierarchy + a screenshot so you can read the real labels/ids and author reliable selectors in ONE pass instead of guessing:
+   ```bash
+   npm --prefix "SKILL_DIR" run mobile-inspect -- --platform android|ios --out "PROJECT/redesigner-artifacts"
+   ```
+   It writes `screens/_inspect.png` + `screens/_inspect.hierarchy.json` and prints one JSON line (`{ ok, device, screenshot, hierarchy, warnings }`). Read the hierarchy to pick text/id selectors. Re-run it whenever you reach a new screen and aren't sure what's tappable. If `_inspect.png` is a splash/login, ask the user to get the app to the screen to survey (log in / land on home), then continue.
+2. **Survey the screens.** Author a flow that walks the main navigation, a `takeScreenshot` per screen. **Selector ladder** (use the most stable one the hierarchy offers; fall back only as needed):
+   1. **`id`/accessibility id** — `tapOn: { id: "tab_pending" }` (most stable; RN `testID` surfaces here).
+   2. **Visible text** — `tapOn: "Pendientes"`.
+   3. **Relative selectors** for ambiguous/icon-only controls — `tapOn: { below: "Header" }`, `childOf`, `containsDescendants` (read these straight off `_inspect.hierarchy.json`).
+   4. **Relative point** — `tapOn: { point: "17%, 8%" }` — **last resort only** (it breaks across screen sizes). Put reliable text/id taps first and risky point taps last (Maestro saves screenshots taken before any failing step).
 3. **READ-ONLY — never tap destructive items**: no "Log out / Cerrar Sesión", delete, pay/checkout, submit. Skip them and tell the user.
 4. **Resume, don't reset.** Don't use `clearState` — it would drop the manual login. `launchApp` resumes; a flow with just `takeScreenshot` captures whatever is on screen.
 5. **Iterate:** run → Read the new screenshots → expand/fix the flow → run again. Re-running accumulates screenshots in `screens/` (the manifest rescans the folder); delete a screen file (e.g. a loading splash) if it pollutes the palette.

@@ -13,6 +13,7 @@
   "scripts": {
     "capture": "tsx bin/capture.ts capture",
     "mobile-doctor": "tsx bin/capture.ts mobile-doctor",
+    "mobile-inspect": "tsx bin/capture.ts mobile-inspect",
     "mobile-capture": "tsx bin/capture.ts mobile-capture",
     "mobile-scaffold": "tsx bin/capture.ts mobile-scaffold",
     "scaffold": "tsx bin/capture.ts scaffold",

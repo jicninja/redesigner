@@ -21,7 +21,12 @@ export interface RunResult {
 /** Run a command, never throwing — returns code so callers decide. */
 export async function run(cmd: string, args: string[]): Promise<RunResult> {
   try {
-    const { stdout, stderr } = await execFileAsync(cmd, args, { maxBuffer: 1024 * 1024 * 16 });
+    // shell:true on Windows so `.bat`/`.cmd` shims (e.g. maestro.bat, emulator.bat) resolve
+    // — execFile can't launch them directly. Mirrors runFlow's spawn options.
+    const { stdout, stderr } = await execFileAsync(cmd, args, {
+      maxBuffer: 1024 * 1024 * 16,
+      shell: process.platform === "win32",
+    });
     return { stdout: stdout.toString(), stderr: stderr.toString(), code: 0 };
   } catch (err: unknown) {
     const e = err as {

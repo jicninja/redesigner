@@ -57,6 +57,25 @@ program
   });
 
 program
+  .command("mobile-inspect")
+  .description("Dumps the CURRENT screen's view hierarchy + a screenshot (read-only, no app launch) so you can author reliable selectors.")
+  .requiredOption("--platform <platform>", "android | ios")
+  .option("--out <dir>", "output directory", "./redesigner-artifacts")
+  .option("--device <udid>", "device/emulator udid", "auto")
+  .action(async (opts) => {
+    try {
+      if (opts.platform !== "android" && opts.platform !== "ios") {
+        throw new Error(`--platform must be "android" or "ios" (got "${opts.platform}")`);
+      }
+      const { runMobileInspect } = await import("../src/mobile/inspect.js");
+      await runMobileInspect({ platform: opts.platform, device: opts.device, out: opts.out });
+    } catch (err) {
+      process.stdout.write(JSON.stringify({ ok: false, error: String(err) }) + "\n");
+      process.exitCode = 1;
+    }
+  });
+
+program
   .command("mobile-capture")
   .description("Drives a native app with Maestro (MANUAL login on device) and captures its screens.")
   .requiredOption("--app <appId>", "Android package / iOS bundleId of the app to survey")
