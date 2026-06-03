@@ -87,6 +87,21 @@ program
   });
 
 program
+  .command("mobile-scaffold")
+  .description("Generates the mobile redesign base (React Native + Expo Router) seeded with the mobile tokens.")
+  .requiredOption("--out <dir>", "project directory (where redesigner-artifacts lives)")
+  .option("--artifacts <dir>", "artifacts directory", "./redesigner-artifacts")
+  .action(async (opts) => {
+    try {
+      const { runMobileScaffold } = await import("../src/mobile/scaffold.js");
+      await runMobileScaffold({ out: opts.out, artifacts: opts.artifacts });
+    } catch (err) {
+      log.error("Error during mobile scaffold: " + String(err));
+      process.exitCode = 1;
+    }
+  });
+
+program
   .command("scaffold")
   .description("Generates the redesign's base project (React + Tailwind + motion).")
   .requiredOption("--out <dir>", "project directory (where redesigner-artifacts lives)")

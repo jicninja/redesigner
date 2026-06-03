@@ -184,7 +184,20 @@ Response: `{ ok, exitCode, outAbs, screensCount, screenshots:[...], warnings }`.
 - **Step 4 (navigable mock)**: the subagent reads `manifest.json` + `screens/*.png` (use `screenshot` paths; there's no `*.full.png`).
 - **Steps 5–6 (analysis + logo)**: fill the reports by **VLM from the screenshots** (no CSS). `logo/logo.png` is a header crop — judge the brand mark from it.
 - **Step 7 (UX audit)**: tell the subagent to use a **mobile lens** — touch-target sizes, thumb reach/zones, safe areas, native navigation patterns (tabs/stack/drawer), gestures, empty/loading/error states.
-- **Step 8 → step 9**: in `redesign-brief.md`, set the **target stack** for the rebuild (React Native/Expo vs mobile-first React web) — decide it with the user before scaffolding. *(Scaffold/show-iterate/export wiring for the mobile stack is the next slice.)*
+- **Step 8 (questions)**: confirm direction/style and, in `redesign-brief.md`, set the **target stack**. Default for a native app is **React Native / Expo** (use M.5). Mobile-first React web is only for a web mockup.
+
+### M.5 Mobile redesign scaffold (React Native / Expo) — then build via SUBAGENT
+Generate the Expo base seeded with the mobile tokens:
+```bash
+npm --prefix "SKILL_DIR" run mobile-scaffold -- --out "PROJECT" --artifacts "PROJECT/redesigner-artifacts"
+```
+This creates `PROJECT/redesign-mobile/` — **Expo Router + React Native + TypeScript**, with `theme.ts` (colors from `tokens.json`: background/surface/text/primary/accent + palette), one screen stub per surveyed screen under `app/` (`app/index.tsx` = home), and base `components/`. Then **delegate the build to a subagent** (Agent tool): use the `frontend-design` skill, read `reports/redesign-brief.md` + `visual-style.md` + the screenshots, and rebuild each `app/*.tsx` screen with React Native primitives (no Tailwind/DOM — use `StyleSheet` and `theme.ts`; animations via `react-native-reanimated` if added). Verify with `npm install` inside `redesign-mobile/`. Return a short summary.
+
+### M.6 Show + iterate on the device (mandatory gate before exports)
+**Don't export until the user approves.** Run the redesign on the device and screenshot it with the **same** engine:
+1. In `redesign-mobile/`: `npm install` then `npx expo start` (the user runs it on the device via Expo Go or a dev build).
+2. Author a small Maestro flow that walks the redesign and re-capture it: `mobile-capture --app <redesign app id> --flows <flow> --out PROJECT/redesign-artifacts-after`. Read those screenshots and show them next to the original survey screens (`redesigner-artifacts/screens/`).
+3. Ask if they approve or want changes; on changes, re-delegate to the subagent with the feedback. Repeat build → show → feedback until approved. Only then move to exports (step 10).
 
 ## Rules
 
