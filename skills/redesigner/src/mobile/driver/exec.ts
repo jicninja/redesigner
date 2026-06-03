@@ -12,6 +12,18 @@ export function adbPath(): string {
   return "adb";
 }
 
+/** Locate the Android `emulator` binary: env override → $ANDROID_HOME/SDK_ROOT → PATH. */
+export function emulatorPath(): string {
+  if (process.env.QA_EMULATOR && existsSync(process.env.QA_EMULATOR)) return process.env.QA_EMULATOR;
+  const exe = process.platform === "win32" ? "emulator.exe" : "emulator";
+  const sdk = process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT;
+  if (sdk) {
+    const candidate = `${sdk}/emulator/${exe}`;
+    if (existsSync(candidate)) return candidate;
+  }
+  return "emulator";
+}
+
 export interface RunResult {
   stdout: string;
   stderr: string;

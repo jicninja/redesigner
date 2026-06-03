@@ -1,4 +1,4 @@
-import { adbPath, run } from "./exec.js";
+import { adbPath, emulatorPath, run } from "./exec.js";
 
 /** List attached Android devices/emulators (state == "device"). */
 export async function listAndroidDevices(): Promise<string[]> {
@@ -9,6 +9,16 @@ export async function listAndroidDevices(): Promise<string[]> {
     .map((l) => l.trim())
     .filter((l) => l.endsWith("\tdevice"))
     .map((l) => l.split("\t")[0]);
+}
+
+/** List installed AVDs (offline emulators) via `emulator -list-avds`. */
+export async function listAvds(): Promise<string[]> {
+  const { stdout, code } = await run(emulatorPath(), ["-list-avds"]);
+  if (code !== 0) return [];
+  return stdout
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !l.startsWith("INFO"));
 }
 
 /** Resolve a device udid: explicit value, or the single attached one if "auto". */

@@ -158,7 +158,7 @@ The engine is a thin CLI; call it via Bash and parse the **one JSON line** it pr
 
 ### M.0 Setup + preflight
 1. If `SKILL_DIR/node_modules` is missing: `npm --prefix "SKILL_DIR" install`.
-2. `npm --prefix "SKILL_DIR" run mobile-doctor`. Confirm `maestro` and `java` are present and a device is available (`androidDevices` non-empty on Windows, or `bootedSimulators` on Mac). If something's missing, tell the user exactly what to install (Maestro needs Java 17+; Android needs adb + an AVD/USB device; iOS needs macOS) and stop.
+2. `npm --prefix "SKILL_DIR" run mobile-doctor`. Confirm `maestro` and `java` are present and a device is available (`androidDevices` non-empty on Windows, or `bootedSimulators` on Mac). If no Android device is attached, the doctor lists offline `avds` and a `hint` with the exact `emulator -avd <name>` command — relay it so the **user** boots one (the engine never boots it for them), then re-run the doctor. If something's missing, tell the user exactly what to install (Maestro needs Java 17+; Android needs adb + an AVD/USB device; iOS needs macOS) and stop.
 
 ### M.1 Security (deliver in the user's language)
 **ALWAYS warn:** *"Login is MANUAL on the device — I never receive or handle your username/password. If the app needs login, log in by hand on the phone (the `--watch` mirror helps). Use a TEST account. The survey is read-only: flows only navigate and screenshot; they never delete, submit, pay or log out."* There are no credential flags by design (an optional `--creds <group>` only injects values from a local gitignored `.qa.secrets.json` as Maestro `--env`).
