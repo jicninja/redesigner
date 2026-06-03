@@ -8,6 +8,10 @@ import { assertPlatformSupported, resolveDevice } from "./driver/resolve.js";
 import { maestroInstalled, runFlow, runHierarchy } from "./driver/maestro.js";
 import { secretsAsEnv, scrub } from "./secrets.js";
 import { startWatch } from "./watch.js";
+import { buildMobileTokens } from "./tokens.js";
+import { extractMobileLogo } from "./logo.js";
+import { writeMobilePreview } from "./preview.js";
+import { writeMobileReportSkeletons } from "./md-templates.js";
 
 /** Progress goes to stderr so stdout stays exactly one JSON line (the agent parses it). */
 function progress(msg: string): void {
@@ -137,12 +141,41 @@ export async function runMobileCapture(config: MobileConfig): Promise<void> {
     return entry;
   });
 
+  const auth = config.creds ? "credentials-injected" : "manual-on-device";
+
+  // Derive artifacts from the captured screenshots (no DOM/CSS on mobile).
+  if (screens.length > 0) {
+    try {
+      await buildMobileTokens(config.outAbs);
+    } catch (e) {
+      warnings.push(`tokens: ${String(e).slice(0, 120)}`);
+    }
+    try {
+      await extractMobileLogo(config.outAbs);
+    } catch (e) {
+      warnings.push(`logo: ${String(e).slice(0, 120)}`);
+    }
+    try {
+      await writeMobilePreview(config.outAbs, screens, {
+        appId: config.app,
+        platform: config.platform,
+        device,
+        auth,
+      });
+    } catch (e) {
+      warnings.push(`preview: ${String(e).slice(0, 120)}`);
+    }
+  } else {
+    warnings.push("no screenshots captured — check the flow's takeScreenshot steps");
+  }
+  await writeMobileReportSkeletons(config.outAbs, config.app);
+
   const manifest: MobileManifest = {
     source: "mobile",
     appId: config.app,
     platform: config.platform,
     device,
-    auth: config.creds ? "credentials-injected" : "manual-on-device",
+    auth,
     startedAt,
     finishedAt: new Date().toISOString(),
     flows: flows.map((f) => path.basename(f)),
