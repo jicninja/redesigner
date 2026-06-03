@@ -1,0 +1,66 @@
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { isAbsolute } from "node:path";
+import { run, which } from "./exec.js";
+
+export function maestroCmd(): string {
+  return process.env.QA_MAESTRO ?? "maestro";
+}
+
+export async function maestroInstalled(): Promise<boolean> {
+  const cmd = maestroCmd();
+  // QA_MAESTRO may be an explicit path (e.g. the Windows .bat) — verify directly.
+  if (isAbsolute(cmd)) return existsSync(cmd);
+  return which(cmd);
+}
+
+export interface RunFlowOptions {
+  device: string;
+  flowPath: string;
+  /** Credentials/params injected as `--env KEY=VALUE`; never written to YAML. */
+  env: Record<string, string>;
+  /** cwd for the run, so `takeScreenshot: <name>` lands here (the artifacts `screens/`). */
+  screensDir: string;
+  /** `--debug-output` target for Maestro's failure artifacts. */
+  debugDir: string;
+}
+
+export interface RunFlowResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+/**
+ * Execute a Maestro flow against a resolved device. Runs with cwd=screensDir so
+ * `takeScreenshot: <name>` lands in the artifacts folder, and points --debug-output
+ * at debugDir for failure artifacts.
+ */
+export function runFlow(opts: RunFlowOptions): Promise<RunFlowResult> {
+  const args = ["test", "--device", opts.device, "--debug-output", opts.debugDir];
+  for (const [k, v] of Object.entries(opts.env)) args.push("--env", `${k}=${v}`);
+  args.push(opts.flowPath);
+
+  return new Promise((resolve) => {
+    const child = spawn(maestroCmd(), args, {
+      cwd: opts.screensDir,
+      shell: process.platform === "win32",
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => (stdout += d.toString()));
+    child.stderr.on("data", (d) => (stderr += d.toString()));
+    child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
+    child.on("error", (err) => resolve({ code: 127, stdout, stderr: stderr + String(err) }));
+  });
+}
+
+/**
+ * Best-effort: dump the current on-screen view hierarchy (mobile analog of HTML).
+ * Returns raw stdout, or null if Maestro can't produce it. Never throws.
+ */
+export async function runHierarchy(device: string): Promise<string | null> {
+  const r = await run(maestroCmd(), ["hierarchy", "--device", device]);
+  if (r.code !== 0 || !r.stdout.trim()) return null;
+  return r.stdout;
+}

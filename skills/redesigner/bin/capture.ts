@@ -43,6 +43,50 @@ program
   });
 
 program
+  .command("mobile-doctor")
+  .description("Checks Maestro/Java/adb and lists available mobile devices.")
+  .action(async () => {
+    try {
+      const { runMobileDoctor } = await import("../src/mobile/doctor.js");
+      const checks = await runMobileDoctor();
+      process.stdout.write(JSON.stringify({ ok: true, checks }) + "\n");
+    } catch (err) {
+      process.stdout.write(JSON.stringify({ ok: false, error: String(err) }) + "\n");
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("mobile-capture")
+  .description("Drives a native app with Maestro (MANUAL login on device) and captures its screens.")
+  .requiredOption("--app <appId>", "Android package / iOS bundleId of the app to survey")
+  .requiredOption("--platform <platform>", "android | ios")
+  .requiredOption("--flows <path>", "a .yaml Maestro flow or a directory of flows")
+  .option("--out <dir>", "output directory", "./redesigner-artifacts")
+  .option("--device <udid>", "device/emulator udid", "auto")
+  .option("--creds <group>", "credential group from .qa.secrets.json (optional, injected as --env)")
+  .option("--watch", "open the live mirror (scrcpy/Simulator) for the human", false)
+  .action(async (opts) => {
+    try {
+      const { buildMobileConfig } = await import("../src/mobile/config.js");
+      const config = buildMobileConfig({
+        app: opts.app,
+        platform: opts.platform,
+        flows: opts.flows,
+        out: opts.out,
+        device: opts.device,
+        creds: opts.creds,
+        watch: opts.watch,
+      });
+      const { runMobileCapture } = await import("../src/mobile/capture.js");
+      await runMobileCapture(config);
+    } catch (err) {
+      log.error("Invalid configuration or error during mobile capture:\n" + formatConfigError(err));
+      process.exitCode = 1;
+    }
+  });
+
+program
   .command("scaffold")
   .description("Generates the redesign's base project (React + Tailwind + motion).")
   .requiredOption("--out <dir>", "project directory (where redesigner-artifacts lives)")

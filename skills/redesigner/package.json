@@ -12,6 +12,8 @@
   },
   "scripts": {
     "capture": "tsx bin/capture.ts capture",
+    "mobile-doctor": "tsx bin/capture.ts mobile-doctor",
+    "mobile-capture": "tsx bin/capture.ts mobile-capture",
     "scaffold": "tsx bin/capture.ts scaffold",
     "postinstall": "playwright install chromium",
     "typecheck": "tsc --noEmit"
