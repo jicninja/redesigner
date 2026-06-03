@@ -166,6 +166,11 @@ The engine is a thin CLI; call it via Bash and parse the **one JSON line** it pr
 ### M.2 Authoring + running flows (the loop)
 You need the app's **appId** (Android package / iOS bundleId) — ask, or read it from the project (`app.config.*`, `AndroidManifest`, etc.). Flows are small YAML files you author under a working dir (e.g. `PROJECT/redesigner-flows/`). Run with `--watch` so the human can see the device and do the manual login.
 
+**Seed the flow template first** so you edit a ready skeleton instead of hand-writing boilerplate (creates `redesigner-flows/survey.yaml` + the reusable `_screenshot.yaml`; never overwrites existing flows):
+```bash
+npm --prefix "SKILL_DIR" run mobile-init-flows -- --out "PROJECT" --app <appId>
+```
+
 1. **Inspect first (read-only, no flow).** Before authoring anything, dump the **current** screen's view hierarchy + a screenshot so you can read the real labels/ids and author reliable selectors in ONE pass instead of guessing:
    ```bash
    npm --prefix "SKILL_DIR" run mobile-inspect -- --platform android|ios --out "PROJECT/redesigner-artifacts"
@@ -178,7 +183,7 @@ You need the app's **appId** (Android package / iOS bundleId) — ask, or read i
    4. **Relative point** — `tapOn: { point: "17%, 8%" }` — **last resort only** (it breaks across screen sizes). Put reliable text/id taps first and risky point taps last (Maestro saves screenshots taken before any failing step).
 3. **READ-ONLY — never tap destructive items**: no "Log out / Cerrar Sesión", delete, pay/checkout, submit. Skip them and tell the user.
 4. **Resume, don't reset.** Don't use `clearState` — it would drop the manual login. `launchApp` resumes; a flow with just `takeScreenshot` captures whatever is on screen.
-5. **Iterate:** run → Read the new screenshots → expand/fix the flow → run again. Re-running accumulates screenshots in `screens/` (the manifest rescans the folder); delete a screen file (e.g. a loading splash) if it pollutes the palette.
+5. **Iterate:** run → Read the new screenshots → expand/fix the flow → run again. Re-running accumulates screenshots in `screens/` (the manifest rescans the folder). For fast selector iteration, run `mobile-capture` with **`--continuous`** (authoring mode): Maestro re-runs the flow on every save without re-spawning, deriving NO artifacts. When the flow is right, Ctrl-C and run again **without** `--continuous` for the real capture. Near-identical consecutive screenshots (e.g. a loading splash) are dropped automatically.
 
 ### M.3 Capture command
 ```bash

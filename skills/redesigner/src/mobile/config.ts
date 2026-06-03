@@ -17,6 +17,8 @@ export const mobileFlagsSchema = z.object({
   device: z.string().default("auto"),
   creds: z.string().optional(),
   watch: z.coerce.boolean().default(false),
+  /** Authoring mode: `maestro test --continuous` re-runs the flow on every save (no artifacts). */
+  continuous: z.coerce.boolean().default(false),
 });
 
 export type MobileFlags = z.infer<typeof mobileFlagsSchema>;

@@ -85,6 +85,7 @@ program
   .option("--device <udid>", "device/emulator udid", "auto")
   .option("--creds <group>", "credential group from .qa.secrets.json (optional, injected as --env)")
   .option("--watch", "open the live mirror (scrcpy/Simulator) for the human", false)
+  .option("--continuous", "authoring mode: re-run the flow on every save (no artifacts derived)", false)
   .action(async (opts) => {
     try {
       const { buildMobileConfig } = await import("../src/mobile/config.js");
@@ -96,11 +97,27 @@ program
         device: opts.device,
         creds: opts.creds,
         watch: opts.watch,
+        continuous: opts.continuous,
       });
       const { runMobileCapture } = await import("../src/mobile/capture.js");
       await runMobileCapture(config);
     } catch (err) {
       log.error("Invalid configuration or error during mobile capture:\n" + formatConfigError(err));
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("mobile-init-flows")
+  .description("Seeds redesigner-flows/ with an editable survey flow + a reusable screenshot subflow.")
+  .option("--out <dir>", "project directory (flows go under <out>/redesigner-flows/)", ".")
+  .option("--app <appId>", "appId to seed into the flow headers (optional)")
+  .action(async (opts) => {
+    try {
+      const { runMobileInitFlows } = await import("../src/mobile/init-flows.js");
+      await runMobileInitFlows({ out: opts.out, app: opts.app });
+    } catch (err) {
+      process.stdout.write(JSON.stringify({ ok: false, error: String(err) }) + "\n");
       process.exitCode = 1;
     }
   });

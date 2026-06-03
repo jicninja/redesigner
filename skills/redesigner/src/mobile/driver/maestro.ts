@@ -23,6 +23,8 @@ export interface RunFlowOptions {
   screensDir: string;
   /** `--debug-output` target for Maestro's failure artifacts. */
   debugDir: string;
+  /** Authoring mode: pass `--continuous` so Maestro re-runs the flow on every save. */
+  continuous?: boolean;
 }
 
 export interface RunFlowResult {
@@ -38,6 +40,7 @@ export interface RunFlowResult {
  */
 export function runFlow(opts: RunFlowOptions): Promise<RunFlowResult> {
   const args = ["test", "--device", opts.device, "--debug-output", opts.debugDir];
+  if (opts.continuous) args.push("--continuous");
   for (const [k, v] of Object.entries(opts.env)) args.push("--env", `${k}=${v}`);
   args.push(opts.flowPath);
 

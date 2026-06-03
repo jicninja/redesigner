@@ -107,6 +107,26 @@ export async function runMobileCapture(config: MobileConfig): Promise<void> {
   let watchPid: number | undefined;
   if (config.watch) watchPid = startWatch(config.platform, device);
 
+  // Authoring mode: `maestro test --continuous` re-runs the flow on every save and never
+  // exits on its own, so the artifact pipeline (tokens/manifest, which need a finite run)
+  // is skipped. Iterate on selectors here, then run again WITHOUT --continuous to capture.
+  if (config.continuous) {
+    const flow = flows[0];
+    progress(
+      `Authoring mode (--continuous): re-running ${path.basename(flow)} on every save. ` +
+        "Ctrl-C to stop, then run again without --continuous for the real capture.",
+    );
+    const r = await runFlow({ device, flowPath: flow, env, screensDir, debugDir, continuous: true });
+    return result({
+      ok: r.code === 0,
+      mode: "continuous",
+      exitCode: r.code,
+      outAbs: config.outAbs,
+      screensDir,
+      watchPid,
+    });
+  }
+
   let combinedLog = "";
   let lastFailCode = 0;
   for (const flow of flows) {

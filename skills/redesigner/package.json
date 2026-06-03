@@ -15,6 +15,7 @@
     "mobile-doctor": "tsx bin/capture.ts mobile-doctor",
     "mobile-inspect": "tsx bin/capture.ts mobile-inspect",
     "mobile-capture": "tsx bin/capture.ts mobile-capture",
+    "mobile-init-flows": "tsx bin/capture.ts mobile-init-flows",
     "mobile-scaffold": "tsx bin/capture.ts mobile-scaffold",
     "scaffold": "tsx bin/capture.ts scaffold",
     "postinstall": "playwright install chromium",
