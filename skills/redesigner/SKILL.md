@@ -197,7 +197,14 @@ This creates `PROJECT/redesign-mobile/` — **Expo Router + React Native + TypeS
 **Don't export until the user approves.** Run the redesign on the device and screenshot it with the **same** engine:
 1. In `redesign-mobile/`: `npm install` then `npx expo start` (the user runs it on the device via Expo Go or a dev build).
 2. Author a small Maestro flow that walks the redesign and re-capture it: `mobile-capture --app <redesign app id> --flows <flow> --out PROJECT/redesign-artifacts-after`. Read those screenshots and show them next to the original survey screens (`redesigner-artifacts/screens/`).
-3. Ask if they approve or want changes; on changes, re-delegate to the subagent with the feedback. Repeat build → show → feedback until approved. Only then move to exports (step 10).
+3. Ask if they approve or want changes; on changes, re-delegate to the subagent with the feedback. Repeat build → show → feedback until approved. Only then move to exports (M.7).
+
+### M.7 Mobile exports (optional, ONLY after approval) — via clean-context SUBAGENT
+`AskUserQuestion`: which exports? For a native app the main target is **Pencil (.pen)** as phone frames. Delegate to a subagent with a clean context (pass only the paths: `PROJECT`, `redesigner-artifacts`, `redesign-mobile/`).
+
+- **Pencil (.pen)**: needs a `.pen` file **open in the Pencil editor** (the user opens/creates one; the MCP can't operate without it). Then with the `pencil` MCP: `get_editor_state({include_schema:true})` + `get_guidelines` (load a guide compatible with mobile app frames), `set_variables` with the theme colors from `tokens.json` (background/surface/text/primary/accent), then `batch_design` to recreate the key redesign screens as **phone-sized frames**, using `redesign-mobile/` + the survey screenshots (`screens/`) as reference. Verify with `get_screenshot` on a frame (not the whole document).
+- **Figma**: there's no DOM HTML for a native app, so the practical path is to import the Pencil frames or the screenshots; report the screenshot/`.pen` paths to the user.
+- Return a short summary of what it exported and where.
 
 ## Rules
 
