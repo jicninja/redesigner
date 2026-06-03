@@ -1,6 +1,6 @@
 ---
 name: redesigner
-description: Surveys a website/app with Playwright (MANUAL login + READ-ONLY crawl), captures screenshots, HTML, CSS, hovers/animations, detects the logo and extracts design tokens; builds a navigable mock of what was surveyed, adds a UX audit via subagent, then orchestrates the redesign with Claude (React + Tailwind + Framer Motion) and exports to Pencil, an HTML mock and Figma. Use when the user wants to survey/audit a site's style or redesign it. Triggers on "redesign", "survey this site", "scrape the style", "redesigner".
+description: Surveys a website/app with Playwright (MANUAL login + READ-ONLY crawl), captures screenshots, HTML, CSS, hovers/animations, detects the logo and extracts design tokens; builds a navigable mock of what was surveyed, adds a UX audit via subagent, then orchestrates the redesign with Claude (React + Tailwind + Framer Motion) and exports to Pencil, an HTML mock and Figma. Also surveys NATIVE MOBILE APPS by driving them with Maestro on a real device/emulator (MANUAL login on the device, READ-ONLY), deriving tokens/logo from the screen pixels and feeding the same analysis/redesign. Use when the user wants to survey/audit a site's style or redesign it. Triggers on "redesign", "survey this site", "scrape the style", "redesigner", and for mobile on "redesign this app", "mobile app", "native app", "Maestro".
 ---
 
 # redesigner — survey and redesign a site
@@ -8,6 +8,15 @@ description: Surveys a website/app with Playwright (MANUAL login + READ-ONLY cra
 Hybrid pipeline: a Node/Playwright engine (deterministic, **read-only**) captures artifacts; you (Claude, with vision) do the analysis, the logo, the questions and the redesign. The heavy steps (navigable mock, UX audit, redesign build, exports) are **delegated to subagents** so they don't consume this conversation's context.
 
 `SKILL_DIR` = this skill's directory (where `package.json` lives). `PROJECT` = the user's cwd.
+
+## Capture source: web or mobile
+
+There are **two capture sources** that both write the same `redesigner-artifacts/` and feed the same downstream steps:
+
+- **Web** (default): a URL → the Playwright engine (steps 0–6 below).
+- **Mobile**: a **native app** on a real device/emulator → the Maestro engine (section **M**). Route here when the user points at an app (package/bundle id, an installed app, "redesign this app", "mobile", "native", an Expo/React Native project).
+
+Pick the source from what the user gives you. After capture, **steps 4 (navigable mock), 5–6 (analysis + logo), 7 (UX audit), 8 (questions), 9–9b (build + show/iterate) and 10 (exports) are SHARED** — they read `redesigner-artifacts/` regardless of source. Mobile just produces `screens/` instead of web `pages`, tokens from **pixels** instead of CSS, and uses a mobile lens (see section M).
 
 ## 0. Setup (first time)
 
@@ -141,10 +150,47 @@ This iteration loop is central: the user must see and refine the redesign by pro
 
 This keeps this conversation's context clean: the navigable mock (step 4), the UX audit (step 7), the redesign build (step 9) and the exports (step 10) run in subagents.
 
+## M. Mobile capture (native app via Maestro)
+
+Use this **instead of steps 0–6** when the source is a native app. It drives the app on a real device/emulator with Maestro (you author the flows; Maestro does the taps/waits), captures a screenshot per screen, and derives tokens/logo from the **pixels** (mobile has no DOM/CSS). Then continue with the **shared** steps 4, 5–6, 7, 8, 9–9b, 10 against the same `redesigner-artifacts/`.
+
+The engine is a thin CLI; call it via Bash and parse the **one JSON line** it prints on stdout (progress goes to stderr).
+
+### M.0 Setup + preflight
+1. If `SKILL_DIR/node_modules` is missing: `npm --prefix "SKILL_DIR" install`.
+2. `npm --prefix "SKILL_DIR" run mobile-doctor`. Confirm `maestro` and `java` are present and a device is available (`androidDevices` non-empty on Windows, or `bootedSimulators` on Mac). If something's missing, tell the user exactly what to install (Maestro needs Java 17+; Android needs adb + an AVD/USB device; iOS needs macOS) and stop.
+
+### M.1 Security (deliver in the user's language)
+**ALWAYS warn:** *"Login is MANUAL on the device — I never receive or handle your username/password. If the app needs login, log in by hand on the phone (the `--watch` mirror helps). Use a TEST account. The survey is read-only: flows only navigate and screenshot; they never delete, submit, pay or log out."* There are no credential flags by design (an optional `--creds <group>` only injects values from a local gitignored `.qa.secrets.json` as Maestro `--env`).
+
+### M.2 Authoring + running flows (the loop)
+You need the app's **appId** (Android package / iOS bundleId) — ask, or read it from the project (`app.config.*`, `AndroidManifest`, etc.). Flows are small YAML files you author under a working dir (e.g. `PROJECT/redesigner-flows/`). Run with `--watch` so the human can see the device and do the manual login.
+
+1. **See the state.** First author a tiny flow that captures the current screen without restarting (`appId` + `- takeScreenshot: 010_current`). Run it, Read the screenshot. If it's a splash/login, ask the user to get the app to the screen to survey (log in / land on home), then continue.
+2. **Survey the screens.** Author a flow that walks the main navigation, a `takeScreenshot` per screen. Locators: prefer **visible text** (`tapOn: "Pendientes"`), fall back to a **relative point** for icon-only controls (`tapOn: { point: "17%, 8%" }` for a top-left hamburger). Put reliable text taps first and risky point taps last (Maestro saves screenshots taken before any failing step).
+3. **READ-ONLY — never tap destructive items**: no "Log out / Cerrar Sesión", delete, pay/checkout, submit. Skip them and tell the user.
+4. **Resume, don't reset.** Don't use `clearState` — it would drop the manual login. `launchApp` resumes; a flow with just `takeScreenshot` captures whatever is on screen.
+5. **Iterate:** run → Read the new screenshots → expand/fix the flow → run again. Re-running accumulates screenshots in `screens/` (the manifest rescans the folder); delete a screen file (e.g. a loading splash) if it pollutes the palette.
+
+### M.3 Capture command
+```bash
+npm --prefix "SKILL_DIR" run mobile-capture -- \
+  --app <appId> --platform android|ios \
+  --flows "<flow .yaml or dir>" --out "PROJECT/redesigner-artifacts" --watch
+```
+Response: `{ ok, exitCode, outAbs, screensCount, screenshots:[...], warnings }`. It writes `manifest.json` (`source:"mobile"`, `screens[]`, plus a `pages[]` alias), `screens/NNN_<label>.png`, `tokens.json` (palette from pixels: `dominantBackground`, `primaryText`, `accentCandidates`), `logo/logo.png` (a header crop), `preview.html` and the report skeletons. Open `preview.html` to eyeball the survey cheaply.
+
+### M.4 Continue with the shared steps (mobile lens)
+- **Step 4 (navigable mock)**: the subagent reads `manifest.json` + `screens/*.png` (use `screenshot` paths; there's no `*.full.png`).
+- **Steps 5–6 (analysis + logo)**: fill the reports by **VLM from the screenshots** (no CSS). `logo/logo.png` is a header crop — judge the brand mark from it.
+- **Step 7 (UX audit)**: tell the subagent to use a **mobile lens** — touch-target sizes, thumb reach/zones, safe areas, native navigation patterns (tabs/stack/drawer), gestures, empty/loading/error states.
+- **Step 8 → step 9**: in `redesign-brief.md`, set the **target stack** for the rebuild (React Native/Expo vs mobile-first React web) — decide it with the user before scaffolding. *(Scaffold/show-iterate/export wiring for the mobile stack is the next slice.)*
+
 ## Rules
 
 - The crawler is **strictly read-only**: never ask the engine to delete/edit/submit anything.
-- **No credentials**: the engine never receives or asks for username/password. Login, if any, is **manual** in the visible browser (`--no-headless`). Never ask for credentials over chat.
+- **No credentials**: the engine never receives or asks for username/password. Login, if any, is **manual** in the visible browser (`--no-headless`) or **on the device** (mobile). Never ask for credentials over chat.
+- **Mobile is read-only too**: flows only navigate and screenshot. Never author taps on log out / delete / pay / submit; never use `clearState` on an app the user logged into by hand.
 - Prefer `preview.html` / the navigable mock over loading many images into context.
 - The navigable mock, the UX audit, the redesign build and the exports go **via subagent**.
 - The **split** (before/after comparison) is **embedded in `redesign/`** via `CompareShell` wrapping the app, not a separate artifact: it uses the original HTML copied to `public/_original/` (with the `assets/` downloaded during capture) and the real redesign as "after". It needs the redesign server running (`npm run dev`).
