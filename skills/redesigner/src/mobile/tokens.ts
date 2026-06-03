@@ -77,9 +77,16 @@ export async function buildMobileTokens(outAbs: string): Promise<DesignTokens> {
   const backgrounds = ranked.slice(0, 6).map((c) => ({ value: rgbToHex(c.r, c.g, c.b), count: c.count }));
 
   const dominantBackground = ranked[0] ? rgbToHex(ranked[0].r, ranked[0].g, ranked[0].b) : undefined;
-  // Primary text: the darkest among the reasonably frequent top buckets.
-  const frequentTop = ranked.slice(0, 24).filter((c) => c.count / totalSamples > 0.002);
-  const text = [...frequentTop].sort((a, b) => luminance(a.r, a.g, a.b) - luminance(b.r, b.g, b.b))[0];
+  // Primary text: the highest-contrast frequent bucket against the background. On a DARK theme
+  // text is light, on a LIGHT theme it's dark — pick by the background's luminance (theme-aware),
+  // not by assuming dark text.
+  const bgLum = ranked[0] ? luminance(ranked[0].r, ranked[0].g, ranked[0].b) : 255;
+  const darkTheme = bgLum < 128;
+  const frequentTop = ranked
+    .slice(0, 24)
+    .filter((c) => c.count / totalSamples > 0.002)
+    .sort((a, b) => luminance(a.r, a.g, a.b) - luminance(b.r, b.g, b.b));
+  const text = darkTheme ? frequentTop[frequentTop.length - 1] : frequentTop[0];
   const primaryText = text ? rgbToHex(text.r, text.g, text.b) : undefined;
   // Accents: saturated, mid-luminance, frequent colors that read as brand/CTA.
   const accentCandidates = ranked
