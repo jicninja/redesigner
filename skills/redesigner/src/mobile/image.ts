@@ -34,6 +34,46 @@ export function luminance(r: number, g: number, b: number): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+/**
+ * Perceptual average-hash (aHash) of an image: downscale to an 8×8 grayscale grid and set
+ * one bit per cell for "brighter than the grid mean". Returns a 64-bit value as a bigint.
+ * Near-identical screens (a loading splash vs the same splash) collapse to a tiny Hamming
+ * distance, so consecutive duplicates can be dropped before building the palette/manifest.
+ */
+export function averageHash(file: string, size = 8): bigint {
+  const { width, height, data } = decodePng(file);
+  const cells: number[] = [];
+  let sum = 0;
+  for (let gy = 0; gy < size; gy++) {
+    for (let gx = 0; gx < size; gx++) {
+      // Sample the center of each grid cell (cheap, robust enough for dedup).
+      const x = Math.min(width - 1, Math.floor((gx + 0.5) * (width / size)));
+      const y = Math.min(height - 1, Math.floor((gy + 0.5) * (height / size)));
+      const i = (y * width + x) * 4;
+      const lum = luminance(data[i], data[i + 1], data[i + 2]);
+      cells.push(lum);
+      sum += lum;
+    }
+  }
+  const mean = sum / cells.length;
+  let hash = 0n;
+  for (let i = 0; i < cells.length; i++) {
+    if (cells[i] > mean) hash |= 1n << BigInt(i);
+  }
+  return hash;
+}
+
+/** Number of differing bits between two aHashes (0 = identical, 64 = opposite). */
+export function hammingDistance(a: bigint, b: bigint): number {
+  let x = a ^ b;
+  let count = 0;
+  while (x > 0n) {
+    count += Number(x & 1n);
+    x >>= 1n;
+  }
+  return count;
+}
+
 /** HSL saturation on 0–1. 0 = grayscale. */
 export function saturation(r: number, g: number, b: number): number {
   const max = Math.max(r, g, b) / 255;

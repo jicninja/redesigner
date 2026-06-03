@@ -28,7 +28,7 @@ const SAMPLE_BUDGET = 40_000;
 export async function buildMobileTokens(outAbs: string): Promise<DesignTokens> {
   const screensDir = path.join(outAbs, "screens");
   const files = readdirSync(screensDir)
-    .filter((f) => /\.png$/i.test(f))
+    .filter((f) => /\.png$/i.test(f) && !f.startsWith("_"))
     .sort();
 
   const buckets = new Map<number, Bucket>();

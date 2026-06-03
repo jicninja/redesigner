@@ -1,4 +1,12 @@
-import { existsSync, readdirSync, statSync, writeFileSync, appendFileSync } from "node:fs";
+import {
+  existsSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+  appendFileSync,
+  mkdirSync,
+  renameSync,
+} from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import type { MobileConfig } from "./config.js";
@@ -8,6 +16,7 @@ import { assertPlatformSupported, resolveDevice } from "./driver/resolve.js";
 import { maestroInstalled, runFlow, runHierarchy } from "./driver/maestro.js";
 import { secretsAsEnv, scrub } from "./secrets.js";
 import { startWatch } from "./watch.js";
+import { averageHash, hammingDistance } from "./image.js";
 import { buildMobileTokens } from "./tokens.js";
 import { extractMobileLogo } from "./logo.js";
 import { writeMobilePreview } from "./preview.js";
@@ -36,15 +45,58 @@ function listFlows(flowsAbs: string): string[] {
   return [flowsAbs];
 }
 
-/** Image files captured by `takeScreenshot`, sorted by name (milestone order). */
+/**
+ * Image files captured by `takeScreenshot`, sorted by name (milestone order).
+ * Underscore-prefixed files (`_inspect.png`, anything under `_skipped/`) are engine
+ * artifacts, not surveyed screens, so they're excluded.
+ */
 function listImages(dir: string): string[] {
   try {
     return readdirSync(dir)
-      .filter((f) => /\.(png|jpe?g)$/i.test(f))
+      .filter((f) => /\.(png|jpe?g)$/i.test(f) && !f.startsWith("_"))
       .sort();
   } catch {
     return [];
   }
+}
+
+/** aHash distance below which two consecutive screens count as the same (e.g. a splash). */
+const DEDUP_THRESHOLD = 5;
+
+/**
+ * Drop near-identical CONSECUTIVE screenshots (loading/splash frames) so they don't pollute
+ * the pixel-derived palette. Duplicates are MOVED to `screens/_skipped/` (not deleted) and
+ * reported in `warnings`. Compares each screen against the last KEPT one, so a run of N
+ * identical splashes collapses to a single kept frame. Conservative threshold to avoid
+ * dropping legitimately distinct screens.
+ */
+function dedupeScreens(screensDir: string, images: string[], warnings: string[]): string[] {
+  if (images.length < 2) return images;
+  const kept: string[] = [];
+  let lastHash: bigint | undefined;
+  for (const file of images) {
+    let hash: bigint;
+    try {
+      hash = averageHash(path.join(screensDir, file));
+    } catch {
+      kept.push(file); // unreadable → keep it, let downstream decide
+      continue;
+    }
+    if (lastHash !== undefined && hammingDistance(hash, lastHash) <= DEDUP_THRESHOLD) {
+      try {
+        const skipDir = path.join(screensDir, "_skipped");
+        mkdirSync(skipDir, { recursive: true });
+        renameSync(path.join(screensDir, file), path.join(skipDir, file));
+        warnings.push(`deduped near-identical screen: ${file} (moved to screens/_skipped/)`);
+        continue;
+      } catch {
+        // If the move fails, keep the file rather than risk losing a screen.
+      }
+    }
+    kept.push(file);
+    lastHash = hash;
+  }
+  return kept;
 }
 
 /**
@@ -152,8 +204,9 @@ export async function runMobileCapture(config: MobileConfig): Promise<void> {
     warnings.push(`hierarchy: ${String(e).slice(0, 120)}`);
   }
 
-  // Build the screen list from the captured milestone screenshots.
-  const images = listImages(screensDir);
+  // Build the screen list from the captured milestone screenshots, dropping near-identical
+  // consecutive frames (splash/loading) so they don't pollute the pixel-derived palette.
+  const images = dedupeScreens(screensDir, listImages(screensDir), warnings);
   const screens: CapturedScreen[] = images.map((file, i) => {
     const label = file.replace(/\.(png|jpe?g)$/i, "");
     const entry: CapturedScreen = { label, screenshot: `screens/${file}` };

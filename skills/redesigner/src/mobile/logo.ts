@@ -16,7 +16,7 @@ const HEADER_BAND = 0.14;
 export async function extractMobileLogo(outAbs: string): Promise<number> {
   const screensDir = path.join(outAbs, "screens");
   const files = readdirSync(screensDir)
-    .filter((f) => /\.png$/i.test(f))
+    .filter((f) => /\.png$/i.test(f) && !f.startsWith("_"))
     .sort();
   if (files.length === 0) return 0;
 
