@@ -92,6 +92,38 @@ If it's **basic**:
 
 Read `reports/uiux-expert-review.md` (or the summary) and **incorporate its recommendations** into your decisions and the step-9 brief.
 
+## 7.5 Discover current UI/UX trends — via SUBAGENT
+
+**Before asking the user about style**, ground the options in what is actually trending.
+**Delegate to a subagent** (Agent tool) with a clean context **and web search**. Pass it the
+current date, the `redesigner-artifacts` paths (`reports/visual-style.md`, `tokens.json`,
+`reports/uiux-expert-review.md`) and these instructions. The subagent MUST:
+
+1. **Build its own source whitelist** from an authority rubric — do NOT hand it a list:
+   - Highest: primary sources — official design systems (Apple HIG, Material), release
+     notes, conference talks (WWDC, Config, Google I/O).
+   - Next: curated juried galleries (awards) and data-backed research ("state of" reports,
+     UX labs).
+   - Discard: SEO listicles with no author, content >18 months old, affiliate farms.
+   - Detect **circularity**: if several pages just cite each other, count them as one and
+     climb to the primary source.
+2. **Admit a trend only if it appears in ≥2 independent sources**, at least one primary/curated.
+   Classify each: status (emerging/rising/mature/declining) and **ships-in-production vs
+   gallery-demo** (kinetic type, heavy glass, etc. often die on a11y/perf).
+3. **Recommend which trends fit THIS site/app** using `visual-style.md` + `tokens.json` +
+   the UX audit — ranked.
+4. Write `redesigner-artifacts/reports/ui-trends.md` (human-readable) **and**
+   `redesigner-artifacts/trends.json` (structured): an array of trends, each
+   `{ nombre, estado, ship_en_produccion, descripcion, rasgos_visuales[],
+   design_tokens_clave{}, cuando_usar, cuando_evitar, ejemplos_referencia[], fuentes[],
+   tipo_fuentes[], confianza }`, plus top-level `recomendadas_para_este_sitio[]` (ranked
+   names), `_whitelist_construida[]` and `_meta { fecha_busqueda, criterio_corte,
+   fuentes_descartadas_n }`.
+5. Return a **short summary** (top trends + which fit this site) — NOT the dump.
+
+Read the summary / `trends.json`; you'll use `recomendadas_para_este_sitio` to build the
+style options in step 8.
+
 ## 8. Redesign questions
 
 `AskUserQuestion` (multi if applicable):
