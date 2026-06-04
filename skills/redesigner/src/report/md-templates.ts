@@ -11,6 +11,43 @@ export async function writeReportSkeletons(outAbs: string, url: string): Promise
   const today = new Date().toISOString().slice(0, 10);
 
   const files: Record<string, string> = {
+    "ui-trends.md": `# UI/UX trends (current)
+
+> Discovered dynamically by a subagent with web search. The source whitelist is
+> built from an authority rubric — NOT hardcoded. See trends.json for structured data.
+> Date: ${today}
+
+## How sources were chosen
+TODO (subagent): the constructed whitelist and why each source scored. Authority rubric:
+primary design systems / official release notes / conference talks score highest; curated
+juried galleries and data-backed research next; SEO listicles discarded. Collapse circular
+citations (pages citing each other = one source; climb to the primary).
+
+## Trends in play
+TODO: per trend — name; status (emerging/rising/mature/declining); ships-in-production?;
+one-line description; key visual traits; when to use / when to avoid; sources; confidence.
+
+## Recommended for THIS site
+TODO: ranked subset that fits the surveyed product (given visual-style.md, tokens.json,
+uiux-expert-review.md), each with its concrete design tokens.
+`,
+    "reference.md": `# Aesthetic reference (optional)
+
+> A web/app the user likes — captured lightly for LOOK & FEEL only. Content and structure
+> still come from the surveyed target.
+> Web: reference/ (screenshots + tokens.json from \`capture --style-only\`) + a WebFetch of the URL.
+> Mobile: store-listing screenshots found by the subagent (VLM).
+> Date: ${today}
+
+## Reference
+TODO (Claude): what it is and the URL / app.
+
+## Aesthetic to borrow
+TODO: palette, typography, density, motion, overall vibe.
+
+## What NOT to copy
+TODO: content, structure, brand marks — aesthetic only.
+`,
     "site-overview.md": `# Site overview
 
 > Surveyed site: ${url}
@@ -86,6 +123,15 @@ Include: brand concept, style, palette, typography, transparent background, vari
 
 ## Chosen direction
 TODO (Claude): full revamp vs refinement + style chosen by the user.
+
+## Trend direction
+TODO (Claude): the trend chosen from ui-trends.md / trends.json, its design tokens, and
+its \`when to avoid\` caveats. These tokens seed theme.css. Emit colors as
+\`rgb(var(--x) / α)\`, never \`rgba(var(--x-rgb), α)\`.
+
+## Reference aesthetic (if provided)
+TODO (Claude): the look & feel borrowed from reference.md (palette/type/density/motion).
+Aesthetic ONLY — content and structure stay from the surveyed site.
 
 ## Proposed improvements
 TODO: concrete list of changes toward a cleaner, more professional UI.
