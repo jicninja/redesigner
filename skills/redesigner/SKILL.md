@@ -259,7 +259,9 @@ Response: `{ ok, exitCode, outAbs, screensCount, screenshots:[...], warnings }`.
 - **Step 4 (navigable mock)**: the subagent reads `manifest.json` + `screens/*.png` (use `screenshot` paths; there's no `*.full.png`).
 - **Steps 5–6 (analysis + logo)**: fill the reports by **VLM from the screenshots** (no CSS). `logo/logo.png` is a header crop — judge the brand mark from it.
 - **Step 7 (UX audit)**: tell the subagent to use a **mobile lens** — touch-target sizes, thumb reach/zones, safe areas, native navigation patterns (tabs/stack/drawer), gestures, empty/loading/error states.
-- **Step 8 (questions)**: confirm direction/style and, in `redesign-brief.md`, set the **target stack**. Default for a native app is **React Native / Expo** (use M.5). Mobile-first React web is only for a web mockup.
+- **Step 7.5 (trends)**: run the trend-discovery subagent with a **mobile lens** — its whitelist favors platform design systems (iOS HIG / Material) and platform talks; trends are judged for touch targets, thumb zones, native nav and gestures. Writes the same `trends.json` + `reports/ui-trends.md`.
+- **Step 7.6 (reference)**: for a **mobile** reference, don't install the app — find its **store listing** (Play / App Store) and read its screenshots by VLM; for a web reference use `capture --style-only`. Fill `reports/reference.md` (aesthetic only).
+- **Step 8 (questions)**: build the **style options dynamically from `trends.json`** (`recomendadas_para_este_sitio`), add a "Match the reference's aesthetic" option if a reference was captured, then in `redesign-brief.md` set the **target stack** (default native app = **React Native / Expo**, use M.5) and fill the **Trend direction** / **Reference aesthetic** sections.
 
 ### M.5 Mobile redesign scaffold (React Native / Expo) — then build via SUBAGENT
 Generate the Expo base seeded with the mobile tokens:
@@ -287,5 +289,6 @@ This creates `PROJECT/redesign-mobile/` — **Expo Router + React Native + TypeS
 - **No credentials**: the engine never receives or asks for username/password. Login, if any, is **manual** in the visible browser (`--no-headless`) or **on the device** (mobile). Never ask for credentials over chat.
 - **Mobile is read-only too**: flows only navigate and screenshot. Never author taps on log out / delete / pay / submit; never use `clearState` on an app the user logged into by hand.
 - Prefer `preview.html` / the navigable mock over loading many images into context.
+- **Trends are discovered, not hardcoded**: the step-7.5 subagent builds its own source whitelist from an authority rubric and writes `trends.json`; the step-8 style options come from it. The optional reference (step 7.6) is **aesthetic only** — never relayed as content/structure.
 - The navigable mock, the UX audit, the redesign build and the exports go **via subagent**.
 - The **split** (before/after comparison) is **embedded in `redesign/`** via `CompareShell` wrapping the app, not a separate artifact: it uses the original HTML copied to `public/_original/` (with the `assets/` downloaded during capture) and the real redesign as "after". It needs the redesign server running (`npm run dev`).
