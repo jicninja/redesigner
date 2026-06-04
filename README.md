@@ -66,9 +66,10 @@ Neon cyan + magenta on near-black, glowing borders, HUD corner brackets, CRT sca
 4. **Analysis** (Claude) — reports in `reports/`: overview, visual style, design tokens, logo.
 5. **UX audit** (subagent, senior designer role) — Nielsen heuristics, hierarchy, consistency, accessibility/contrast, states, and quick wins vs opportunities.
 6. **Logo** — if it's generic, it builds a **prompt for gpt-image** that you run yourself (no API, no cost).
-7. **Claude design** (subagent with the `frontend-design` skill) — scaffolds **React 19 + Vite + Tailwind v4 + Framer Motion** seeded with the tokens, and Claude fills in components and pages.
-8. **Show + iterate** — mandatory gate: the redesign is shown and iterated by prompt **until you approve**, before exporting.
-9. **Exports** (subagent, optional, only after approval) — static HTML mock, **Figma** (`html.to.design` + `tokens.figma.json` for Tokens Studio) and **Pencil** (.pen via MCP).
+7. **Trends + reference** — before you pick a style, a subagent with web search discovers the current UI/UX trends, building its **own source whitelist** from an authority rubric (official design systems and juried galleries over SEO listicles, de-duping circular citations) and writing `trends.json`; the style options offered to you are **generated from the trends that fit your site**, not a hardcoded list. Optionally point it at a **reference website or app**, captured lightly for look & feel only (`--style-only` for web; store-listing screenshots for mobile) to steer the aesthetic without touching content or structure.
+8. **Claude design** (subagent with the `frontend-design` skill) — scaffolds **React 19 + Vite + Tailwind v4 + Framer Motion** seeded with the tokens, and Claude fills in components and pages.
+9. **Show + iterate** — mandatory gate: the redesign is shown and iterated by prompt **until you approve**, before exporting.
+10. **Exports** (subagent, optional, only after approval) — static HTML mock, **Figma** (`html.to.design` + `tokens.figma.json` for Tokens Studio) and **Pencil** (.pen via MCP).
 
 `redesign/` (the React project) is the **source of truth** for exports.
 
@@ -243,9 +244,10 @@ Neon cyan + magenta sobre negro, bordes con glow, corner-brackets tipo HUD, scan
 4. **Análisis** (Claude) — reportes en `reports/`: overview, estilo visual, design tokens, logo.
 5. **Auditoría UX** (subagente, rol de diseñador/a senior) — heurísticas de Nielsen, jerarquía, consistencia, accesibilidad/contraste, estados, y quick wins vs oportunidades.
 6. **Logo** — si es genérico, arma un **prompt para gpt-image** que vos lanzás a mano (sin API ni costo).
-7. **Claude design** (subagente con el skill `frontend-design`) — scaffold **React 19 + Vite + Tailwind v4 + Framer Motion** sembrado con los tokens, y Claude completa componentes y páginas.
-8. **Mostrar + iterar** — gate obligatorio: se muestra el rediseño y se itera por prompt **hasta que apruebes**, antes de exportar.
-9. **Exports** (subagente, opcional, solo tras aprobación) — mock HTML estático, **Figma** (`html.to.design` + `tokens.figma.json` para Tokens Studio) y **Pencil** (.pen vía MCP).
+7. **Tendencias + referencia** — antes de elegir el estilo, un subagente con web search descubre las tendencias UI/UX actuales, armando su **propia whitelist de fuentes** desde una rúbrica de autoridad (design systems oficiales y galerías con jurado por encima de listicles SEO, deduplicando citas circulares) y escribiendo `trends.json`; las opciones de estilo que se te ofrecen se **generan desde las tendencias que encajan con tu sitio**, no de una lista fija. Opcionalmente, apuntalo a una **web o app de referencia**, capturada liviana solo por su look & feel (`--style-only` para web; capturas del listing de la store para mobile) para guiar la estética sin tocar contenido ni estructura.
+8. **Claude design** (subagente con el skill `frontend-design`) — scaffold **React 19 + Vite + Tailwind v4 + Framer Motion** sembrado con los tokens, y Claude completa componentes y páginas.
+9. **Mostrar + iterar** — gate obligatorio: se muestra el rediseño y se itera por prompt **hasta que apruebes**, antes de exportar.
+10. **Exports** (subagente, opcional, solo tras aprobación) — mock HTML estático, **Figma** (`html.to.design` + `tokens.figma.json` para Tokens Studio) y **Pencil** (.pen vía MCP).
 
 `redesign/` (proyecto React) es la **fuente de verdad** de los exports.
 
