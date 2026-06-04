@@ -14,6 +14,7 @@ import type { CapturedScreen, MobileManifest } from "./types.js";
 import { ensureDir, writeJson } from "../util/fs.js";
 import { assertPlatformSupported, resolveDevice } from "./driver/resolve.js";
 import { maestroInstalled, runFlow, runHierarchy } from "./driver/maestro.js";
+import { loginGate } from "./login.js";
 import { secretsAsEnv, scrub } from "./secrets.js";
 import { startWatch } from "./watch.js";
 import { averageHash, hammingDistance } from "./image.js";
@@ -148,6 +149,16 @@ export async function runMobileCapture(config: MobileConfig): Promise<void> {
       env = secretsAsEnv(config.creds);
     } catch (e) {
       return result({ ok: false, error: (e as Error).message });
+    }
+  }
+
+  // Manual-login gate (mobile mirror of the web flow): unless credentials were injected
+  // (--creds = automated login) or we're in --continuous authoring mode, launch the app
+  // and wait — polling the hierarchy — until the user logs in BY HAND on the device.
+  if (!config.creds && !config.continuous) {
+    const gate = await loginGate(device, config);
+    if (gate.status === "failed") {
+      return result({ ok: false, error: `login gate: ${gate.reason}` });
     }
   }
 

@@ -163,6 +163,8 @@ The engine is a thin CLI; call it via Bash and parse the **one JSON line** it pr
 ### M.1 Security (deliver in the user's language)
 **ALWAYS warn:** *"Login is MANUAL on the device — I never receive or handle your username/password. If the app needs login, log in by hand on the phone (the `--watch` mirror helps). Use a TEST account. The survey is read-only: flows only navigate and screenshot; they never delete, submit, pay or log out."* There are no credential flags by design (an optional `--creds <group>` only injects values from a local gitignored `.qa.secrets.json` as Maestro `--env`).
 
+**Auto-gate (mirror of the web flow):** before running the survey flows, `mobile-capture` launches the app and probes the view hierarchy. If it looks like a login screen, it prints a box and **waits, polling, until you log in by hand and the login screen clears** — then continues on its own (no terminal interaction, like the web browser gate). If no login screen is detected, it proceeds immediately. The gate is skipped when `--creds` (automated injection) or `--continuous` (authoring) is set.
+
 ### M.2 Authoring + running flows (the loop)
 You need the app's **appId** (Android package / iOS bundleId) — ask, or read it from the project (`app.config.*`, `AndroidManifest`, etc.). Flows are small YAML files you author under a working dir (e.g. `PROJECT/redesigner-flows/`). Run with `--watch` so the human can see the device and do the manual login.
 

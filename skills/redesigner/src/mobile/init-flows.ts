@@ -31,6 +31,10 @@ function surveyFlow(appId: string): string {
   return `# survey.yaml — redesigner survey flow. READ-ONLY.
 # Walk the app's main navigation and screenshot each screen.
 #
+# LOGIN: handled automatically BEFORE this flow runs. The engine launches the app and,
+# if it detects a login screen, waits while you log in BY HAND on the device (it never
+# receives your credentials). This flow then just resumes that logged-in session.
+#
 # RULES (do not break):
 #   - NEVER tap log out / delete / pay / checkout / submit.
 #   - NEVER use clearState — it would drop the MANUAL login you did on the device.

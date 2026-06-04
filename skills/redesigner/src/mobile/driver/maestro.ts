@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { isAbsolute } from "node:path";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { isAbsolute, join } from "node:path";
 import { run, which } from "./exec.js";
 
 export function maestroCmd(): string {
@@ -56,6 +57,24 @@ export function runFlow(opts: RunFlowOptions): Promise<RunFlowResult> {
     child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
     child.on("error", (err) => resolve({ code: 127, stdout, stderr: stderr + String(err) }));
   });
+}
+
+/**
+ * Foreground an app on the device via an ephemeral `launchApp` flow (cross-platform,
+ * reuses the Maestro runner instead of raw adb/xcrun). `launchApp` RESUMES the app —
+ * it does not reset it — so a session the user logged into by hand is preserved.
+ * Returns true on success. Never throws.
+ */
+export async function launchApp(device: string, appId: string): Promise<boolean> {
+  const dir = mkdtempSync(join(tmpdir(), "redesigner-launch-"));
+  const flow = join(dir, "launch.yaml");
+  writeFileSync(flow, `appId: ${appId}\n---\n- launchApp\n`);
+  try {
+    const r = await run(maestroCmd(), ["test", "--device", device, flow]);
+    return r.code === 0;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 /**
