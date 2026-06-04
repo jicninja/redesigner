@@ -24,6 +24,9 @@ export const captureFlagsSchema = z.object({
   viewport: viewportSchema.prefault("1440x900"),
   headless: z.coerce.boolean().default(true),
   captureTrace: z.coerce.boolean().default(false),
+  // Light "style only" capture: single page screenshot + tokens, no crawl/assets/logo.
+  // Used to capture an aesthetic reference site (look & feel only).
+  styleOnly: z.coerce.boolean().default(false),
   // Maximum time per page (ms).
   pageTimeout: z.coerce.number().int().positive().default(30_000),
 });

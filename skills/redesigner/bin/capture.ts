@@ -21,6 +21,7 @@ program
   .option("--viewport <WxH>", "viewport size", "1440x900")
   .option("--no-headless", "open the browser (required if the site asks for login: it is manual)")
   .option("--capture-trace", "record a Playwright trace (heavy)", false)
+  .option("--style-only", "light style-only capture: single page screenshot + tokens, no crawl/assets/logo (for an aesthetic reference)", false)
   .option("--page-timeout <ms>", "timeout per page", "30000")
   .action(async (opts) => {
     try {
@@ -32,6 +33,7 @@ program
         viewport: opts.viewport,
         headless: opts.headless,
         captureTrace: opts.captureTrace,
+        styleOnly: opts.styleOnly,
         pageTimeout: opts.pageTimeout,
       });
       const { runCapture } = await import("../src/capture/index.js");
