@@ -12,6 +12,44 @@ export async function writeMobileReportSkeletons(outAbs: string, appId: string):
   const today = new Date().toISOString().slice(0, 10);
 
   const files: Record<string, string> = {
+    "ui-trends.md": `# UI/UX trends (current — mobile lens)
+
+> Discovered dynamically by a subagent with web search. Whitelist built from an authority
+> rubric — NOT hardcoded. See trends.json for structured data.
+> Date: ${today}
+
+## How sources were chosen
+TODO (subagent): constructed whitelist + scoring. Authority rubric: official platform
+design systems (iOS HIG / Material) and conference talks (WWDC, Google I/O) score highest;
+curated galleries and data-backed research next; SEO listicles discarded. Collapse circular
+citations.
+
+## Trends in play (mobile)
+TODO: per trend — name; status; ships-in-production?; description; visual traits; when to
+use / avoid; sources; confidence. Mobile lens: touch targets, thumb zones, native nav
+patterns (tabs/stack/drawer), gestures, safe areas.
+
+## Recommended for THIS app
+TODO: ranked subset that fits the surveyed app (given visual-style.md, tokens.json,
+uiux-expert-review.md), each with its concrete design tokens.
+`,
+    "reference.md": `# Aesthetic reference (optional)
+
+> An app/web the user likes — captured lightly for LOOK & FEEL only.
+> Mobile reference: store-listing screenshots (Play / App Store) found by the subagent (VLM)
+> — we do NOT install third-party apps.
+> Web reference: reference/ from \`capture --style-only\` + a WebFetch of the URL.
+> Date: ${today}
+
+## Reference
+TODO (Claude): what it is and the store URL / app.
+
+## Aesthetic to borrow
+TODO: palette, typography, density, motion, overall vibe.
+
+## What NOT to copy
+TODO: content, structure, brand marks — aesthetic only.
+`,
     "site-overview.md": `# App overview
 
 > Surveyed app: ${appId}
@@ -87,6 +125,14 @@ Include: brand concept, style, palette, typography, transparent background, vari
 
 ## Chosen direction
 TODO (Claude): full revamp vs refinement + style chosen by the user.
+
+## Trend direction
+TODO (Claude): the trend chosen from ui-trends.md / trends.json (mobile lens), its design
+tokens, and its \`when to avoid\` caveats. These tokens seed theme.ts.
+
+## Reference aesthetic (if provided)
+TODO (Claude): look & feel borrowed from reference.md (palette/type/density/motion).
+Aesthetic ONLY — content and structure stay from the surveyed app.
 
 ## Target stack
 TODO: React Native / Expo vs mobile-first React web (decided before the scaffold step).
