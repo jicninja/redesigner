@@ -124,14 +124,42 @@ current date, the `redesigner-artifacts` paths (`reports/visual-style.md`, `toke
 Read the summary / `trends.json`; you'll use `recomendadas_para_este_sitio` to build the
 style options in step 8.
 
+## 7.6 Optional aesthetic reference
+
+Ask the user (optional, in their language): *"Is there a website or app whose look you'd
+like the redesign to draw from? (optional)"* This influences **aesthetics only** — palette,
+typography, density, motion. Content and structure still come from the surveyed target. If
+they decline, skip to step 8.
+
+- **Web reference (URL):** capture it lightly — single page, no crawl:
+  ```bash
+  npm --prefix "SKILL_DIR" run capture -- --url "<REF_URL>" --out "PROJECT/redesigner-artifacts/reference" --style-only
+  ```
+  Then `WebFetch` the URL for brand/vibe context. Look at
+  `redesigner-artifacts/reference/screenshots/*` and `reference/tokens.json`.
+- **Mobile app reference:** do NOT install it. Use a subagent (or WebSearch/WebFetch) to find
+  the app's **store listing** (Google Play / App Store) and read its **screenshots** by VLM.
+
+Fill `redesigner-artifacts/reports/reference.md`: what it is, the aesthetic to borrow
+(palette/type/density/motion/vibe) and what NOT to copy (content/structure/brand). Carry this
+into the step-8 brief as a **style reference only**.
+
 ## 8. Redesign questions
 
 `AskUserQuestion` (multi if applicable):
 - **Type**: full revamp vs refinement.
-- **Style**: minimal / corporate / playful / dark / etc.
+- **Style**: build the options **dynamically from `trends.json`** —
+  `recomendadas_para_este_sitio` (ranked), each labeled by its `nombre` with a one-line
+  `descripcion`; do NOT use a hardcoded list. Prefer trends with `ship_en_produccion: true`.
+  If a reference was captured in step 7.6, add an extra option **"Match the reference's
+  aesthetic"**.
 - **Priority**: which pages/components matter most.
 
-With the answers + the UX audit, complete `reports/redesign-brief.md`: concrete improvements, component inventory, and the **motion plan** (map transitions/keyframes to `motion` variants).
+With the answers + the UX audit + the chosen trend's `design_tokens_clave` + the reference
+(if any), complete `reports/redesign-brief.md`: fill **Chosen direction**, **Trend direction**
+(chosen trend + its tokens + `cuando_evitar` caveats — these seed `theme.css`), **Reference
+aesthetic** (if provided), concrete improvements, component inventory, and the **motion plan**
+(map transitions/keyframes to `motion` variants).
 
 ## 9. Claude design (ALWAYS first) — via SUBAGENT
 
