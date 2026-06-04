@@ -60,6 +60,8 @@ Neon cyan + magenta on near-black, glowing borders, HUD corner brackets, CRT sca
 
 ## How it works (pipeline)
 
+**First, it asks the redesign mode** (mandatory, before capture): **estricto** — aesthetic-only, keeps the structure, functionality, **branding colors** and the **logo**; vs **flexible** — may change colors, **regenerate the logo**, and touch functionality. This choice frames the logo, style and build steps below.
+
 1. **Capture** (Playwright, read-only) — crawls same-origin **without touching anything destructive** (skips logout/delete/checkout/…), and per page saves: screenshots (full + viewport), HTML, CSS (via network interception, CORS-immune), sampled computed styles, hovers/focus (pixels + diff), `transitions` and `@keyframes`. Detects the **logo** and aggregates **design tokens**.
 2. **preview.html** — lightweight gallery to eyeball what was scraped, without spending model context.
 3. **Navigable mock** (subagent) — recreates the surveyed site view by view, so you can walk through it before deciding.
@@ -237,6 +239,8 @@ Neon cyan + magenta sobre negro, bordes con glow, corner-brackets tipo HUD, scan
 ---
 
 ## Cómo funciona (pipeline)
+
+**Primero pregunta el modo de rediseño** (obligatorio, antes del capture): **estricto** — solo estético, mantiene estructura, funcionalidades, **colores de branding** y el **logo**; vs **flexible** — puede cambiar colores, **regenerar el logo** e impactar funcionalidades. Esta elección enmarca los pasos de logo, estilo y build de abajo.
 
 1. **Capture** (Playwright, solo lectura) — crawlea same-origin **sin tocar nada destructivo** (salta logout/delete/checkout/…), y por cada página guarda: screenshots (full + viewport), HTML, CSS (vía interceptación de red, inmune a CORS), computed styles muestreados, hovers/focus (píxeles + diff), `transitions` y `@keyframes`. Detecta el **logo** y agrega **design tokens**.
 2. **preview.html** — galería liviana para revisar a ojo lo scrapeado, sin gastar contexto del modelo.

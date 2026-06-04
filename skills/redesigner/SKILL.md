@@ -26,6 +26,25 @@ npm --prefix "SKILL_DIR" install
 ```
 (The `postinstall` downloads Playwright's Chromium.)
 
+## 0.5 Redesign mode — ASK FIRST (mandatory, before anything else)
+
+**The very first thing you do when this skill launches** — before capture, before asking for the
+URL/appId, for **both sources** (web and mobile) — is ask the user **what kind of redesign this
+is**. This single choice (`redesign_mode`) frames every downstream decision (logo, trends, the
+style questions, and the build). Do **not** skip it and do **not** infer it.
+
+`AskUserQuestion` (in the user's language), two options:
+
+- **Estricto** — *No cambia estructura ni funcionalidades. El resultado se parece a lo actual, con
+  libertades **puramente estéticas** (espaciado, tipografía, profundidad, jerarquía, motion,
+  pulido). **Mantiene el logo** (su identidad) y **los colores de branding**.*
+- **Flexible** — *Puede ir más allá: cambiar **colores/paleta**, **regenerar el logo** (prompt para
+  gpt-image) y hacer cambios que **pueden impactar estructura y funcionalidades existentes**.*
+
+Record the answer as **`redesign_mode`** (`estricto` | `flexible`). Carry it explicitly into
+`reports/redesign-brief.md` (step 8) and pass it to **every build subagent** (step 9 / M.5). The
+mode-specific clauses below (steps 6, 7.5–7.6, 8, 9, M.4–M.5) all key off it.
+
 ## 1. Interactive preflight (in the user's language)
 
 1. Ask for the site **URL** if it wasn't provided.
@@ -78,7 +97,13 @@ Fill in the skeletons in `redesigner-artifacts/reports/` (they already exist wit
 
 Look at `redesigner-artifacts/logo/logo.png` and `logo/candidates/` with Read. Complete `reports/logo-analysis.md`: type (wordmark/icon/combined), quality, **is it basic/generic?** (yes/no + why).
 
-If it's **basic**:
+**Mode gate (`redesign_mode`):**
+- **Estricto:** **never regenerate the logo** nor compose a gpt-image prompt — keep the existing
+  mark and its identity even if it's basic. Just document it in `logo-analysis.md` (the build will
+  reuse the captured logo as-is). Skip the steps below.
+- **Flexible:** if it's basic, proceed with the regeneration branch below.
+
+If it's **basic** (flexible only):
 1. `AskUserQuestion`: ask the user to explain the brand (values, audience, what sets it apart).
 2. Compose a **refined prompt for gpt-image** (concept, style, palette from `tokens.json`, transparent background, variations) and write it to `reports/logo-prompt.md`. Show it to them: **the user runs it by hand** in gpt-image/ChatGPT (no API call). They'll drop the resulting logo into `redesign/src/assets/`.
 
@@ -124,6 +149,11 @@ current date, the `redesigner-artifacts` paths (`reports/visual-style.md`, `toke
 Read the summary / `trends.json`; you'll use `recomendadas_para_este_sitio` to build the
 style options in step 8.
 
+**Mode lens (`redesign_mode`):** trends are always discovered. In **estricto** they're applied as
+**aesthetic treatments that keep the branding palette and the existing structure** (no palette
+swap, no re-layout) — prefer trends whose `design_tokens_clave` are texture/type/motion rather than
+color-defining. In **flexible** trends may drive palette and structural changes.
+
 ## 7.6 Optional aesthetic reference
 
 Ask the user (optional, in their language): *"Is there a website or app whose look you'd
@@ -144,22 +174,35 @@ Fill `redesigner-artifacts/reports/reference.md`: what it is, the aesthetic to b
 (palette/type/density/motion/vibe) and what NOT to copy (content/structure/brand). Carry this
 into the step-8 brief as a **style reference only**.
 
+**Mode lens (`redesign_mode`):** in **estricto** the reference informs only type/density/motion —
+**not** palette (branding colors stay) and never structure. In **flexible** the reference may also
+steer the palette.
+
 ## 8. Redesign questions
 
-`AskUserQuestion` (multi if applicable):
-- **Type**: full revamp vs refinement.
+`AskUserQuestion` (multi if applicable). **Shape the questions by `redesign_mode`:**
+- **Type**: in **flexible**, ask full revamp vs refinement. In **estricto**, **don't ask** — it is
+  locked to **refinement** (no structural/functional changes).
 - **Style**: build the options **dynamically from `trends.json`** —
   `recomendadas_para_este_sitio` (ranked), each labeled by its `nombre` with a one-line
   `descripcion`; do NOT use a hardcoded list. Prefer trends with `ship_en_produccion: true`.
   If a reference was captured in step 7.6, add an extra option **"Match the reference's
-  aesthetic"**.
+  aesthetic"**. In **estricto**, frame these as **aesthetic-only treatments** and do **not** offer
+  any color/palette change — the palette stays = the branding colors in `tokens.json`.
 - **Priority**: which pages/components matter most.
 
 With the answers + the UX audit + the chosen trend's `design_tokens_clave` + the reference
-(if any), complete `reports/redesign-brief.md`: fill **Chosen direction**, **Trend direction**
-(chosen trend + its tokens + `cuando_evitar` caveats — these seed `theme.css`), **Reference
-aesthetic** (if provided), concrete improvements, component inventory, and the **motion plan**
-(map transitions/keyframes to `motion` variants).
+(if any), complete `reports/redesign-brief.md`. **First** fill a **`Redesign mode`** field at the
+top: the chosen mode and its explicit constraints —
+- *estricto:* keep structure, functionality, navigation, **branding palette** (`tokens.json`) and
+  the **existing logo**; changes are **aesthetic only**.
+- *flexible:* may restructure, change palette, swap a regenerated logo, and touch functionality
+  (call those out).
+
+Then fill **Chosen direction**, **Trend direction** (chosen trend + its tokens + `cuando_evitar`
+caveats — these seed `theme.css`; in **estricto** they must not override the branding palette),
+**Reference aesthetic** (if provided), concrete improvements, component inventory, and the
+**motion plan** (map transitions/keyframes to `motion` variants).
 
 ## 9. Claude design (ALWAYS first) — via SUBAGENT
 
@@ -171,9 +214,19 @@ This creates `PROJECT/redesign/` (React 19 + Vite 8 + Tailwind v4 + `motion@12`,
 
 The scaffold also generates the embedded **split mode**: `src/CompareShell.tsx`, a shell that **wraps the app** (`main.tsx` mounts `<CompareShell><App/></CompareShell>`). It compares the **original** site (the "before" side, an iframe served **offline** from `public/_original/` — copied from the `html/`, `assets/`, `css/` artifacts; page list in `src/lib/original.ts`) against the **real redesign** (the "after" side, the `App` itself rendered), with a curtain that by **default follows the mouse** and can be **pinned** (🖱️ button in the bar or click on the ⇔ handle; when pinned, the handle is draggable and hover/click over the redesign is freed). **Scroll** and the **view** (dropdown ↔ redesign route, via `route` in `src/lib/original.ts`) are synced between both sides. By **default** it shows the split; **double click** = only the new design fullscreen (hides the bar), another double click returns to the split. The subagent must NOT break the `CompareShell` mount or `public/_original/`.
 
-Then **delegate the redesign build to a subagent** (Agent tool) to save context. The subagent must:
+Then **delegate the redesign build to a subagent** (Agent tool) to save context. **Pass it
+`redesign_mode` and its contract:**
+- **Estricto:** preserve the information architecture, page structure, component layout, navigation
+  and existing functionality; **keep the branding colors** (leave `theme.css` seeded from
+  `tokens.json` — no palette swap) and the **existing logo**; all changes are **purely aesthetic**
+  (spacing, type scale, depth, hierarchy, motion, polish).
+- **Flexible:** liberties allowed — may restructure, change the palette/theme, swap in a
+  regenerated logo, and make changes that can impact existing functionality (call those out in the
+  summary).
+
+The subagent must:
 - Use the `frontend-design` skill.
-- Read `reports/redesign-brief.md`, `visual-style.md`, `design-tokens.md`, `uiux-expert-review.md` and the relevant screenshots from the preview.
+- Read `reports/redesign-brief.md` (honor its **Redesign mode** field), `visual-style.md`, `design-tokens.md`, `uiux-expert-review.md` and the relevant screenshots from the preview.
 - Complete the components and pages in `PROJECT/redesign/`, using Tailwind v4 (`@theme`) and Framer Motion (`motion/react`) generously (entrance with `fadeUp`/`staggerContainer`, hover/tap with `hoverLift`, page transitions with `AnimatePresence`).
 - Verify with `npm install && npm run build` inside `redesign/`.
 - Return a short summary (what it built, what's left), NOT all the files.
@@ -261,14 +314,14 @@ Response: `{ ok, exitCode, outAbs, screensCount, screenshots:[...], warnings }`.
 - **Step 7 (UX audit)**: tell the subagent to use a **mobile lens** — touch-target sizes, thumb reach/zones, safe areas, native navigation patterns (tabs/stack/drawer), gestures, empty/loading/error states.
 - **Step 7.5 (trends)**: run the trend-discovery subagent with a **mobile lens** — its whitelist favors platform design systems (iOS HIG / Material) and platform talks; trends are judged for touch targets, thumb zones, native nav and gestures. Writes the same `trends.json` + `reports/ui-trends.md`.
 - **Step 7.6 (reference)**: for a **mobile** reference, don't install the app — find its **store listing** (Play / App Store) and read its screenshots by VLM; for a web reference use `capture --style-only`. Fill `reports/reference.md` (aesthetic only).
-- **Step 8 (questions)**: build the **style options dynamically from `trends.json`** (`recomendadas_para_este_sitio`), add a "Match the reference's aesthetic" option if a reference was captured, then in `redesign-brief.md` set the **target stack** (default native app = **React Native / Expo**, use M.5) and fill the **Trend direction** / **Reference aesthetic** sections.
+- **Step 8 (questions)**: build the **style options dynamically from `trends.json`** (`recomendadas_para_este_sitio`), add a "Match the reference's aesthetic" option if a reference was captured, then in `redesign-brief.md` set the **target stack** (default native app = **React Native / Expo**, use M.5) and fill the **Redesign mode**, **Trend direction** / **Reference aesthetic** sections. The `redesign_mode` chosen in §0.5 shapes the questions and brief exactly as in step 8 (estricto = locked to refinement, branding palette + logo preserved, aesthetic-only).
 
 ### M.5 Mobile redesign scaffold (React Native / Expo) — then build via SUBAGENT
 Generate the Expo base seeded with the mobile tokens:
 ```bash
 npm --prefix "SKILL_DIR" run mobile-scaffold -- --out "PROJECT" --artifacts "PROJECT/redesigner-artifacts"
 ```
-This creates `PROJECT/redesign-mobile/` — **Expo Router + React Native + TypeScript**, with `theme.ts` (colors from `tokens.json`: background/surface/text/primary/accent + palette), one screen stub per surveyed screen under `app/` (`app/index.tsx` = home), and base `components/`. Then **delegate the build to a subagent** (Agent tool): use the `frontend-design` skill, read `reports/redesign-brief.md` + `visual-style.md` + the screenshots, and rebuild each `app/*.tsx` screen with React Native primitives (no Tailwind/DOM — use `StyleSheet` and `theme.ts`; animations via `react-native-reanimated` if added). Verify with `npm install` inside `redesign-mobile/`. Return a short summary.
+This creates `PROJECT/redesign-mobile/` — **Expo Router + React Native + TypeScript**, with `theme.ts` (colors from `tokens.json`: background/surface/text/primary/accent + palette), one screen stub per surveyed screen under `app/` (`app/index.tsx` = home), and base `components/`. Then **delegate the build to a subagent** (Agent tool), **passing `redesign_mode` and its contract** (same as step 9: **estricto** = preserve screen structure, navigation and functionality, keep the branding colors in `theme.ts` and the existing logo, aesthetic-only; **flexible** = may restructure, change palette/theme, swap a regenerated logo, and touch functionality). The subagent must: use the `frontend-design` skill, read `reports/redesign-brief.md` (honor its **Redesign mode** field) + `visual-style.md` + the screenshots, and rebuild each `app/*.tsx` screen with React Native primitives (no Tailwind/DOM — use `StyleSheet` and `theme.ts`; animations via `react-native-reanimated` if added). Verify with `npm install` inside `redesign-mobile/`. Return a short summary.
 
 ### M.6 Show + iterate on the device (mandatory gate before exports)
 **Don't export until the user approves.** Run the redesign on the device and screenshot it with the **same** engine:
@@ -285,6 +338,7 @@ This creates `PROJECT/redesign-mobile/` — **Expo Router + React Native + TypeS
 
 ## Rules
 
+- **Redesign mode is asked FIRST** (§0.5, mandatory, for web and mobile): **estricto** (aesthetic-only — keeps structure, functionality, the branding palette and the existing logo) vs **flexible** (may change colors, regenerate the logo, and touch functionality). `redesign_mode` is threaded through the logo (step 6), trends/reference (7.5–7.6), the step-8 questions/brief, and the build subagents (step 9 / M.5).
 - The crawler is **strictly read-only**: never ask the engine to delete/edit/submit anything.
 - **No credentials**: the engine never receives or asks for username/password. Login, if any, is **manual** in the visible browser (`--no-headless`) or **on the device** (mobile). Never ask for credentials over chat.
 - **Mobile is read-only too**: flows only navigate and screenshot. Never author taps on log out / delete / pay / submit; never use `clearState` on an app the user logged into by hand.
