@@ -54,7 +54,7 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
   const css = new CssCollector();
   css.attach(session.context);
   const assets = new AssetCollector(config.outAbs);
-  assets.attach(session.context);
+  if (!config.styleOnly) assets.attach(session.context);
 
   const captured: PageArtifacts[] = [];
 
@@ -82,52 +82,66 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
     log.success(`Access: ${authLabel}`);
     if (loginResult.status !== "public") await saveStorageState(session);
 
-    // Non-destructive crawl, capturing each page.
+    // Non-destructive crawl, capturing each page. In style-only mode we grab
+    // just the start page (aesthetic reference — no link-following).
     const startUrl = page.url();
-    const { visited, skipped } = await crawl(
-      page,
-      startUrl,
-      { maxPages: config.maxPages, pageTimeout: config.pageTimeout },
-      {
-        onPage: async (p, url) => {
-          const art = await capturePage(p, url, config.outAbs);
-          captured.push(art);
+    let skipped: { url: string; reason: string }[] = [];
+    if (config.styleOnly) {
+      const art = await capturePage(page, startUrl, config.outAbs);
+      captured.push(art);
+      log.success("Style-only capture: 1 page.");
+    } else {
+      const res = await crawl(
+        page,
+        startUrl,
+        { maxPages: config.maxPages, pageTimeout: config.pageTimeout },
+        {
+          onPage: async (p, url) => {
+            const art = await capturePage(p, url, config.outAbs);
+            captured.push(art);
+          },
         },
-      },
-    );
-    log.success(`Crawl: ${visited.length} pages, ${skipped.length} skipped.`);
+      );
+      skipped = res.skipped;
+      log.success(`Crawl: ${res.visited.length} pages, ${res.skipped.length} skipped.`);
+    }
 
     // Write all the stylesheets collected over the network.
     const sheetNames = await css.writeAll(path.join(config.outAbs, "css"));
     const combinedCss = css.combinedCss();
 
     // Rewrite saved HTML/CSS → local assets (offline) + <base> fallback.
-    try {
-      await rewriteCapturedAssets(
-        config.outAbs,
-        captured.map((p) => ({ html: p.html, url: p.url, slug: p.slug })),
-        sheetNames,
-        assets.map(),
-        warnings,
-      );
-    } catch (err) {
-      warnings.push(`asset rewrite: ${String(err).slice(0, 120)}`);
+    // Skipped in style-only mode (no assets downloaded, no offline mock needed).
+    if (!config.styleOnly) {
+      try {
+        await rewriteCapturedAssets(
+          config.outAbs,
+          captured.map((p) => ({ html: p.html, url: p.url, slug: p.slug })),
+          sheetNames,
+          assets.map(),
+          warnings,
+        );
+      } catch (err) {
+        warnings.push(`asset rewrite: ${String(err).slice(0, 120)}`);
+      }
+      warnings.push(...assets.getWarnings());
     }
-    warnings.push(...assets.getWarnings());
 
     // Fine details (hover/focus/transitions/keyframes) on the first page.
-    try {
-      await extractFineDetails(page, config.outAbs, combinedCss);
-    } catch (err) {
-      warnings.push(`fine details: ${String(err).slice(0, 120)}`);
-    }
-
-    // Logo.
     let logoCount = 0;
-    try {
-      logoCount = await detectLogo(session.context, captured, config.outAbs);
-    } catch (err) {
-      warnings.push(`logo: ${String(err).slice(0, 120)}`);
+    if (!config.styleOnly) {
+      try {
+        await extractFineDetails(page, config.outAbs, combinedCss);
+      } catch (err) {
+        warnings.push(`fine details: ${String(err).slice(0, 120)}`);
+      }
+
+      // Logo.
+      try {
+        logoCount = await detectLogo(session.context, captured, config.outAbs);
+      } catch (err) {
+        warnings.push(`logo: ${String(err).slice(0, 120)}`);
+      }
     }
 
     // Design tokens.
@@ -137,8 +151,11 @@ export async function runCapture(config: CaptureConfig): Promise<void> {
       warnings.push(`tokens: ${String(err).slice(0, 120)}`);
     }
 
-    // Report skeletons for Claude to fill in.
-    await writeReportSkeletons(config.outAbs, config.url);
+    // Report skeletons for Claude to fill in. Style-only reference captures don't
+    // get their own reports — they feed reports/reference.md in the main artifacts dir.
+    if (!config.styleOnly) {
+      await writeReportSkeletons(config.outAbs, config.url);
+    }
 
     // Preview.html: basic gallery to eyeball what was scraped (cheap).
     await writePreview(config.outAbs, captured, { url: config.url, auth: authLabel });

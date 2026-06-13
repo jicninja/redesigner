@@ -1,6 +1,6 @@
 ---
 name: redesigner
-description: Surveys a website/app with Playwright (MANUAL login + READ-ONLY crawl), captures screenshots, HTML, CSS, hovers/animations, detects the logo and extracts design tokens; builds a navigable mock of what was surveyed, adds a UX audit via subagent, then orchestrates the redesign with Claude (React + Tailwind + Framer Motion) and exports to Pencil, an HTML mock and Figma. Use when the user wants to survey/audit a site's style or redesign it. Triggers on "redesign", "survey this site", "scrape the style", "redesigner".
+description: Surveys a website/app with Playwright (MANUAL login + READ-ONLY crawl), captures screenshots, HTML, CSS, hovers/animations, detects the logo and extracts design tokens; builds a navigable mock of what was surveyed, adds a UX audit via subagent, then orchestrates the redesign with Claude (React + Tailwind + Framer Motion) and exports to Pencil, an HTML mock and Figma. Also surveys NATIVE MOBILE APPS by driving them with Maestro on a real device/emulator (MANUAL login on the device, READ-ONLY), deriving tokens/logo from the screen pixels and feeding the same analysis/redesign. Use when the user wants to survey/audit a site's style or redesign it. Triggers on "redesign", "survey this site", "scrape the style", "redesigner", and for mobile on "redesign this app", "mobile app", "native app", "Maestro".
 ---
 
 # redesigner — survey and redesign a site
@@ -9,6 +9,15 @@ Hybrid pipeline: a Node/Playwright engine (deterministic, **read-only**) capture
 
 `SKILL_DIR` = this skill's directory (where `package.json` lives). `PROJECT` = the user's cwd.
 
+## Capture source: web or mobile
+
+There are **two capture sources** that both write the same `redesigner-artifacts/` and feed the same downstream steps:
+
+- **Web** (default): a URL → the Playwright engine (steps 0–6 below).
+- **Mobile**: a **native app** on a real device/emulator → the Maestro engine (section **M**). Route here when the user points at an app (package/bundle id, an installed app, "redesign this app", "mobile", "native", an Expo/React Native project).
+
+Pick the source from what the user gives you. After capture, **steps 4 (navigable mock), 5–6 (analysis + logo), 7 (UX audit), 8 (questions), 9–9b (build + show/iterate) and 10 (exports) are SHARED** — they read `redesigner-artifacts/` regardless of source. Mobile just produces `screens/` instead of web `pages`, tokens from **pixels** instead of CSS, and uses a mobile lens (see section M).
+
 ## 0. Setup (first time)
 
 If `SKILL_DIR/node_modules` doesn't exist, install dependencies:
@@ -16,6 +25,25 @@ If `SKILL_DIR/node_modules` doesn't exist, install dependencies:
 npm --prefix "SKILL_DIR" install
 ```
 (The `postinstall` downloads Playwright's Chromium.)
+
+## 0.5 Redesign mode — ASK FIRST (mandatory, before anything else)
+
+**The very first thing you do when this skill launches** — before capture, before asking for the
+URL/appId, for **both sources** (web and mobile) — is ask the user **what kind of redesign this
+is**. This single choice (`redesign_mode`) frames every downstream decision (logo, trends, the
+style questions, and the build). Do **not** skip it and do **not** infer it.
+
+`AskUserQuestion` (in the user's language), two options:
+
+- **Estricto** — *No cambia estructura ni funcionalidades. El resultado se parece a lo actual, con
+  libertades **puramente estéticas** (espaciado, tipografía, profundidad, jerarquía, motion,
+  pulido). **Mantiene el logo** (su identidad) y **los colores de branding**.*
+- **Flexible** — *Puede ir más allá: cambiar **colores/paleta**, **regenerar el logo** (prompt para
+  gpt-image) y hacer cambios que **pueden impactar estructura y funcionalidades existentes**.*
+
+Record the answer as **`redesign_mode`** (`estricto` | `flexible`). Carry it explicitly into
+`reports/redesign-brief.md` (step 8) and pass it to **every build subagent** (step 9 / M.5). The
+mode-specific clauses below (steps 6, 7.5–7.6, 8, 9, M.4–M.5) all key off it.
 
 ## 1. Interactive preflight (in the user's language)
 
@@ -69,7 +97,13 @@ Fill in the skeletons in `redesigner-artifacts/reports/` (they already exist wit
 
 Look at `redesigner-artifacts/logo/logo.png` and `logo/candidates/` with Read. Complete `reports/logo-analysis.md`: type (wordmark/icon/combined), quality, **is it basic/generic?** (yes/no + why).
 
-If it's **basic**:
+**Mode gate (`redesign_mode`):**
+- **Estricto:** **never regenerate the logo** nor compose a gpt-image prompt — keep the existing
+  mark and its identity even if it's basic. Just document it in `logo-analysis.md` (the build will
+  reuse the captured logo as-is). Skip the steps below.
+- **Flexible:** if it's basic, proceed with the regeneration branch below.
+
+If it's **basic** (flexible only):
 1. `AskUserQuestion`: ask the user to explain the brand (values, audience, what sets it apart).
 2. Compose a **refined prompt for gpt-image** (concept, style, palette from `tokens.json`, transparent background, variations) and write it to `reports/logo-prompt.md`. Show it to them: **the user runs it by hand** in gpt-image/ChatGPT (no API call). They'll drop the resulting logo into `redesign/src/assets/`.
 
@@ -83,14 +117,92 @@ If it's **basic**:
 
 Read `reports/uiux-expert-review.md` (or the summary) and **incorporate its recommendations** into your decisions and the step-9 brief.
 
+## 7.5 Discover current UI/UX trends — via SUBAGENT
+
+**Before asking the user about style**, ground the options in what is actually trending.
+**Delegate to a subagent** (Agent tool) with a clean context **and web search**. Pass it the
+current date, the `redesigner-artifacts` paths (`reports/visual-style.md`, `tokens.json`,
+`reports/uiux-expert-review.md`) and these instructions. The subagent MUST:
+
+1. **Build its own source whitelist** from an authority rubric — do NOT hand it a list:
+   - Highest: primary sources — official design systems (Apple HIG, Material), release
+     notes, conference talks (WWDC, Config, Google I/O).
+   - Next: curated juried galleries (awards) and data-backed research ("state of" reports,
+     UX labs).
+   - Discard: SEO listicles with no author, content >18 months old, affiliate farms.
+   - Detect **circularity**: if several pages just cite each other, count them as one and
+     climb to the primary source.
+2. **Admit a trend only if it appears in ≥2 independent sources**, at least one primary/curated.
+   Classify each: status (emerging/rising/mature/declining) and **ships-in-production vs
+   gallery-demo** (kinetic type, heavy glass, etc. often die on a11y/perf).
+3. **Recommend which trends fit THIS site/app** using `visual-style.md` + `tokens.json` +
+   the UX audit — ranked.
+4. Write `redesigner-artifacts/reports/ui-trends.md` (human-readable) **and**
+   `redesigner-artifacts/trends.json` (structured): an array of trends, each
+   `{ nombre, estado, ship_en_produccion, descripcion, rasgos_visuales[],
+   design_tokens_clave{}, cuando_usar, cuando_evitar, ejemplos_referencia[], fuentes[],
+   tipo_fuentes[], confianza }`, plus top-level `recomendadas_para_este_sitio[]` (ranked
+   names), `_whitelist_construida[]` and `_meta { fecha_busqueda, criterio_corte,
+   fuentes_descartadas_n }`.
+5. Return a **short summary** (top trends + which fit this site) — NOT the dump.
+
+Read the summary / `trends.json`; you'll use `recomendadas_para_este_sitio` to build the
+style options in step 8.
+
+**Mode lens (`redesign_mode`):** trends are always discovered. In **estricto** they're applied as
+**aesthetic treatments that keep the branding palette and the existing structure** (no palette
+swap, no re-layout) — prefer trends whose `design_tokens_clave` are texture/type/motion rather than
+color-defining. In **flexible** trends may drive palette and structural changes.
+
+## 7.6 Optional aesthetic reference
+
+Ask the user (optional, in their language): *"Is there a website or app whose look you'd
+like the redesign to draw from? (optional)"* This influences **aesthetics only** — palette,
+typography, density, motion. Content and structure still come from the surveyed target. If
+they decline, skip to step 8.
+
+- **Web reference (URL):** capture it lightly — single page, no crawl:
+  ```bash
+  npm --prefix "SKILL_DIR" run capture -- --url "<REF_URL>" --out "PROJECT/redesigner-artifacts/reference" --style-only
+  ```
+  Then `WebFetch` the URL for brand/vibe context. Look at
+  `redesigner-artifacts/reference/screenshots/*` and `reference/tokens.json`.
+- **Mobile app reference:** do NOT install it. Use a subagent (or WebSearch/WebFetch) to find
+  the app's **store listing** (Google Play / App Store) and read its **screenshots** by VLM.
+
+Fill `redesigner-artifacts/reports/reference.md`: what it is, the aesthetic to borrow
+(palette/type/density/motion/vibe) and what NOT to copy (content/structure/brand). Carry this
+into the step-8 brief as a **style reference only**.
+
+**Mode lens (`redesign_mode`):** in **estricto** the reference informs only type/density/motion —
+**not** palette (branding colors stay) and never structure. In **flexible** the reference may also
+steer the palette.
+
 ## 8. Redesign questions
 
-`AskUserQuestion` (multi if applicable):
-- **Type**: full revamp vs refinement.
-- **Style**: minimal / corporate / playful / dark / etc.
+`AskUserQuestion` (multi if applicable). **Shape the questions by `redesign_mode`:**
+- **Type**: in **flexible**, ask full revamp vs refinement. In **estricto**, **don't ask** — it is
+  locked to **refinement** (no structural/functional changes).
+- **Style**: build the options **dynamically from `trends.json`** —
+  `recomendadas_para_este_sitio` (ranked), each labeled by its `nombre` with a one-line
+  `descripcion`; do NOT use a hardcoded list. Prefer trends with `ship_en_produccion: true`.
+  If a reference was captured in step 7.6, add an extra option **"Match the reference's
+  aesthetic"**. In **estricto**, frame these as **aesthetic-only treatments** and do **not** offer
+  any color/palette change — the palette stays = the branding colors in `tokens.json`.
 - **Priority**: which pages/components matter most.
 
-With the answers + the UX audit, complete `reports/redesign-brief.md`: concrete improvements, component inventory, and the **motion plan** (map transitions/keyframes to `motion` variants).
+With the answers + the UX audit + the chosen trend's `design_tokens_clave` + the reference
+(if any), complete `reports/redesign-brief.md`. **First** fill a **`Redesign mode`** field at the
+top: the chosen mode and its explicit constraints —
+- *estricto:* keep structure, functionality, navigation, **branding palette** (`tokens.json`) and
+  the **existing logo**; changes are **aesthetic only**.
+- *flexible:* may restructure, change palette, swap a regenerated logo, and touch functionality
+  (call those out).
+
+Then fill **Chosen direction**, **Trend direction** (chosen trend + its tokens + `cuando_evitar`
+caveats — these seed `theme.css`; in **estricto** they must not override the branding palette),
+**Reference aesthetic** (if provided), concrete improvements, component inventory, and the
+**motion plan** (map transitions/keyframes to `motion` variants).
 
 ## 9. Claude design (ALWAYS first) — via SUBAGENT
 
@@ -102,9 +214,19 @@ This creates `PROJECT/redesign/` (React 19 + Vite 8 + Tailwind v4 + `motion@12`,
 
 The scaffold also generates the embedded **split mode**: `src/CompareShell.tsx`, a shell that **wraps the app** (`main.tsx` mounts `<CompareShell><App/></CompareShell>`). It compares the **original** site (the "before" side, an iframe served **offline** from `public/_original/` — copied from the `html/`, `assets/`, `css/` artifacts; page list in `src/lib/original.ts`) against the **real redesign** (the "after" side, the `App` itself rendered), with a curtain that by **default follows the mouse** and can be **pinned** (🖱️ button in the bar or click on the ⇔ handle; when pinned, the handle is draggable and hover/click over the redesign is freed). **Scroll** and the **view** (dropdown ↔ redesign route, via `route` in `src/lib/original.ts`) are synced between both sides. By **default** it shows the split; **double click** = only the new design fullscreen (hides the bar), another double click returns to the split. The subagent must NOT break the `CompareShell` mount or `public/_original/`.
 
-Then **delegate the redesign build to a subagent** (Agent tool) to save context. The subagent must:
+Then **delegate the redesign build to a subagent** (Agent tool) to save context. **Pass it
+`redesign_mode` and its contract:**
+- **Estricto:** preserve the information architecture, page structure, component layout, navigation
+  and existing functionality; **keep the branding colors** (leave `theme.css` seeded from
+  `tokens.json` — no palette swap) and the **existing logo**; all changes are **purely aesthetic**
+  (spacing, type scale, depth, hierarchy, motion, polish).
+- **Flexible:** liberties allowed — may restructure, change the palette/theme, swap in a
+  regenerated logo, and make changes that can impact existing functionality (call those out in the
+  summary).
+
+The subagent must:
 - Use the `frontend-design` skill.
-- Read `reports/redesign-brief.md`, `visual-style.md`, `design-tokens.md`, `uiux-expert-review.md` and the relevant screenshots from the preview.
+- Read `reports/redesign-brief.md` (honor its **Redesign mode** field), `visual-style.md`, `design-tokens.md`, `uiux-expert-review.md` and the relevant screenshots from the preview.
 - Complete the components and pages in `PROJECT/redesign/`, using Tailwind v4 (`@theme`) and Framer Motion (`motion/react`) generously (entrance with `fadeUp`/`staggerContainer`, hover/tap with `hoverLift`, page transitions with `AnimatePresence`).
 - Verify with `npm install && npm run build` inside `redesign/`.
 - Return a short summary (what it built, what's left), NOT all the files.
@@ -141,10 +263,86 @@ This iteration loop is central: the user must see and refine the redesign by pro
 
 This keeps this conversation's context clean: the navigable mock (step 4), the UX audit (step 7), the redesign build (step 9) and the exports (step 10) run in subagents.
 
+## M. Mobile capture (native app via Maestro)
+
+Use this **instead of steps 0–6** when the source is a native app. It drives the app on a real device/emulator with Maestro (you author the flows; Maestro does the taps/waits), captures a screenshot per screen, and derives tokens/logo from the **pixels** (mobile has no DOM/CSS). Then continue with the **shared** steps 4, 5–6, 7, 8, 9–9b, 10 against the same `redesigner-artifacts/`.
+
+The engine is a thin CLI; call it via Bash and parse the **one JSON line** it prints on stdout (progress goes to stderr).
+
+### M.0 Setup + preflight
+1. If `SKILL_DIR/node_modules` is missing: `npm --prefix "SKILL_DIR" install`.
+2. `npm --prefix "SKILL_DIR" run mobile-doctor`. Confirm `maestro` and `java` are present and a device is available (`androidDevices` non-empty on Windows, or `bootedSimulators` on Mac). If no Android device is attached, the doctor lists offline `avds` and a `hint` with the exact `emulator -avd <name>` command — relay it so the **user** boots one (the engine never boots it for them), then re-run the doctor. If something's missing, tell the user exactly what to install (Maestro needs Java 17+; Android needs adb + an AVD/USB device; iOS needs macOS) and stop.
+
+### M.1 Security (deliver in the user's language)
+**ALWAYS warn:** *"Login is MANUAL on the device — I never receive or handle your username/password. If the app needs login, log in by hand on the phone (the `--watch` mirror helps). Use a TEST account. The survey is read-only: flows only navigate and screenshot; they never delete, submit, pay or log out."* There are no credential flags by design (an optional `--creds <group>` only injects values from a local gitignored `.qa.secrets.json` as Maestro `--env`).
+
+**Auto-gate (mirror of the web flow):** before running the survey flows, `mobile-capture` launches the app and probes the view hierarchy. If it looks like a login screen, it prints a box and **waits, polling, until you log in by hand and the login screen clears** — then continues on its own (no terminal interaction, like the web browser gate). If no login screen is detected, it proceeds immediately. The gate is skipped when `--creds` (automated injection) or `--continuous` (authoring) is set.
+
+### M.2 Authoring + running flows (the loop)
+You need the app's **appId** (Android package / iOS bundleId) — ask, or read it from the project (`app.config.*`, `AndroidManifest`, etc.). Flows are small YAML files you author under a working dir (e.g. `PROJECT/redesigner-flows/`). Run with `--watch` so the human can see the device and do the manual login.
+
+**Seed the flow template first** so you edit a ready skeleton instead of hand-writing boilerplate (creates `redesigner-flows/survey.yaml` + the reusable `_screenshot.yaml`; never overwrites existing flows):
+```bash
+npm --prefix "SKILL_DIR" run mobile-init-flows -- --out "PROJECT" --app <appId>
+```
+
+1. **Inspect first (read-only, no flow).** Before authoring anything, dump the **current** screen's view hierarchy + a screenshot so you can read the real labels/ids and author reliable selectors in ONE pass instead of guessing:
+   ```bash
+   npm --prefix "SKILL_DIR" run mobile-inspect -- --platform android|ios --out "PROJECT/redesigner-artifacts"
+   ```
+   It writes `screens/_inspect.png` + `screens/_inspect.hierarchy.json` and prints one JSON line (`{ ok, device, screenshot, hierarchy, warnings }`). Read the hierarchy to pick text/id selectors. Re-run it whenever you reach a new screen and aren't sure what's tappable. If `_inspect.png` is a splash/login, ask the user to get the app to the screen to survey (log in / land on home), then continue.
+2. **Survey the screens.** Author a flow that walks the main navigation, a `takeScreenshot` per screen. **Selector ladder** (use the most stable one the hierarchy offers; fall back only as needed):
+   1. **`id`/accessibility id** — `tapOn: { id: "tab_pending" }` (most stable; RN `testID` surfaces here).
+   2. **Visible text** — `tapOn: "Pendientes"`.
+   3. **Relative selectors** for ambiguous/icon-only controls — `tapOn: { below: "Header" }`, `childOf`, `containsDescendants` (read these straight off `_inspect.hierarchy.json`).
+   4. **Relative point** — `tapOn: { point: "17%, 8%" }` — **last resort only** (it breaks across screen sizes). Put reliable text/id taps first and risky point taps last (Maestro saves screenshots taken before any failing step).
+3. **READ-ONLY — never tap destructive items**: no "Log out / Cerrar Sesión", delete, pay/checkout, submit. Skip them and tell the user.
+4. **Resume, don't reset.** Don't use `clearState` — it would drop the manual login. `launchApp` resumes; a flow with just `takeScreenshot` captures whatever is on screen.
+5. **Iterate:** run → Read the new screenshots → expand/fix the flow → run again. Re-running accumulates screenshots in `screens/` (the manifest rescans the folder). For fast selector iteration, run `mobile-capture` with **`--continuous`** (authoring mode): Maestro re-runs the flow on every save without re-spawning, deriving NO artifacts. When the flow is right, Ctrl-C and run again **without** `--continuous` for the real capture. Near-identical consecutive screenshots (e.g. a loading splash) are dropped automatically.
+
+### M.3 Capture command
+```bash
+npm --prefix "SKILL_DIR" run mobile-capture -- \
+  --app <appId> --platform android|ios \
+  --flows "<flow .yaml or dir>" --out "PROJECT/redesigner-artifacts" --watch
+```
+Response: `{ ok, exitCode, outAbs, screensCount, screenshots:[...], warnings }`. It writes `manifest.json` (`source:"mobile"`, `screens[]`, plus a `pages[]` alias), `screens/NNN_<label>.png`, `tokens.json` (palette from pixels: `dominantBackground`, `primaryText`, `accentCandidates`), `logo/logo.png` (a header crop), `preview.html` and the report skeletons. Open `preview.html` to eyeball the survey cheaply.
+
+### M.4 Continue with the shared steps (mobile lens)
+- **Step 4 (navigable mock)**: the subagent reads `manifest.json` + `screens/*.png` (use `screenshot` paths; there's no `*.full.png`).
+- **Steps 5–6 (analysis + logo)**: fill the reports by **VLM from the screenshots** (no CSS). `logo/logo.png` is a header crop — judge the brand mark from it.
+- **Step 7 (UX audit)**: tell the subagent to use a **mobile lens** — touch-target sizes, thumb reach/zones, safe areas, native navigation patterns (tabs/stack/drawer), gestures, empty/loading/error states.
+- **Step 7.5 (trends)**: run the trend-discovery subagent with a **mobile lens** — its whitelist favors platform design systems (iOS HIG / Material) and platform talks; trends are judged for touch targets, thumb zones, native nav and gestures. Writes the same `trends.json` + `reports/ui-trends.md`.
+- **Step 7.6 (reference)**: for a **mobile** reference, don't install the app — find its **store listing** (Play / App Store) and read its screenshots by VLM; for a web reference use `capture --style-only`. Fill `reports/reference.md` (aesthetic only).
+- **Step 8 (questions)**: build the **style options dynamically from `trends.json`** (`recomendadas_para_este_sitio`), add a "Match the reference's aesthetic" option if a reference was captured, then in `redesign-brief.md` set the **target stack** (default native app = **React Native / Expo**, use M.5) and fill the **Redesign mode**, **Trend direction** / **Reference aesthetic** sections. The `redesign_mode` chosen in §0.5 shapes the questions and brief exactly as in step 8 (estricto = locked to refinement, branding palette + logo preserved, aesthetic-only).
+
+### M.5 Mobile redesign scaffold (React Native / Expo) — then build via SUBAGENT
+Generate the Expo base seeded with the mobile tokens:
+```bash
+npm --prefix "SKILL_DIR" run mobile-scaffold -- --out "PROJECT" --artifacts "PROJECT/redesigner-artifacts"
+```
+This creates `PROJECT/redesign-mobile/` — **Expo Router + React Native + TypeScript**, with `theme.ts` (colors from `tokens.json`: background/surface/text/primary/accent + palette), one screen stub per surveyed screen under `app/` (`app/index.tsx` = home), and base `components/`. Then **delegate the build to a subagent** (Agent tool), **passing `redesign_mode` and its contract** (same as step 9: **estricto** = preserve screen structure, navigation and functionality, keep the branding colors in `theme.ts` and the existing logo, aesthetic-only; **flexible** = may restructure, change palette/theme, swap a regenerated logo, and touch functionality). The subagent must: use the `frontend-design` skill, read `reports/redesign-brief.md` (honor its **Redesign mode** field) + `visual-style.md` + the screenshots, and rebuild each `app/*.tsx` screen with React Native primitives (no Tailwind/DOM — use `StyleSheet` and `theme.ts`; animations via `react-native-reanimated` if added). Verify with `npm install` inside `redesign-mobile/`. Return a short summary.
+
+### M.6 Show + iterate on the device (mandatory gate before exports)
+**Don't export until the user approves.** Run the redesign on the device and screenshot it with the **same** engine:
+1. In `redesign-mobile/`: `npm install` then `npx expo start` (the user runs it on the device via Expo Go or a dev build).
+2. Author a small Maestro flow that walks the redesign and re-capture it: `mobile-capture --app <redesign app id> --flows <flow> --out PROJECT/redesign-artifacts-after`. Read those screenshots and show them next to the original survey screens (`redesigner-artifacts/screens/`).
+3. Ask if they approve or want changes; on changes, re-delegate to the subagent with the feedback. Repeat build → show → feedback until approved. Only then move to exports (M.7).
+
+### M.7 Mobile exports (optional, ONLY after approval) — via clean-context SUBAGENT
+`AskUserQuestion`: which exports? For a native app the main target is **Pencil (.pen)** as phone frames. Delegate to a subagent with a clean context (pass only the paths: `PROJECT`, `redesigner-artifacts`, `redesign-mobile/`).
+
+- **Pencil (.pen)**: needs a `.pen` file **open in the Pencil editor** (the user opens/creates one; the MCP can't operate without it). Then with the `pencil` MCP: `get_editor_state({include_schema:true})` + `get_guidelines` (load a guide compatible with mobile app frames), `set_variables` with the theme colors from `tokens.json` (background/surface/text/primary/accent), then `batch_design` to recreate the key redesign screens as **phone-sized frames**, using `redesign-mobile/` + the survey screenshots (`screens/`) as reference. Verify with `get_screenshot` on a frame (not the whole document).
+- **Figma**: there's no DOM HTML for a native app, so the practical path is to import the Pencil frames or the screenshots; report the screenshot/`.pen` paths to the user.
+- Return a short summary of what it exported and where.
+
 ## Rules
 
+- **Redesign mode is asked FIRST** (§0.5, mandatory, for web and mobile): **estricto** (aesthetic-only — keeps structure, functionality, the branding palette and the existing logo) vs **flexible** (may change colors, regenerate the logo, and touch functionality). `redesign_mode` is threaded through the logo (step 6), trends/reference (7.5–7.6), the step-8 questions/brief, and the build subagents (step 9 / M.5).
 - The crawler is **strictly read-only**: never ask the engine to delete/edit/submit anything.
-- **No credentials**: the engine never receives or asks for username/password. Login, if any, is **manual** in the visible browser (`--no-headless`). Never ask for credentials over chat.
+- **No credentials**: the engine never receives or asks for username/password. Login, if any, is **manual** in the visible browser (`--no-headless`) or **on the device** (mobile). Never ask for credentials over chat.
+- **Mobile is read-only too**: flows only navigate and screenshot. Never author taps on log out / delete / pay / submit; never use `clearState` on an app the user logged into by hand.
 - Prefer `preview.html` / the navigable mock over loading many images into context.
+- **Trends are discovered, not hardcoded**: the step-7.5 subagent builds its own source whitelist from an authority rubric and writes `trends.json`; the step-8 style options come from it. The optional reference (step 7.6) is **aesthetic only** — never relayed as content/structure.
 - The navigable mock, the UX audit, the redesign build and the exports go **via subagent**.
 - The **split** (before/after comparison) is **embedded in `redesign/`** via `CompareShell` wrapping the app, not a separate artifact: it uses the original HTML copied to `public/_original/` (with the `assets/` downloaded during capture) and the real redesign as "after". It needs the redesign server running (`npm run dev`).
