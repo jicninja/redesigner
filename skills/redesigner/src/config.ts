@@ -1,5 +1,6 @@
 import path from "node:path";
 import { z } from "zod";
+import { DEFAULT_ARTIFACTS_DIR } from "./util/paths.js";
 
 /**
  * Configuration for the `capture` command. There is NO .env file or credentials: the
@@ -19,7 +20,7 @@ const viewportSchema = z
 export const captureFlagsSchema = z.object({
   url: z.string().url("--url must be a valid URL (include https://)"),
   loginUrl: z.string().url().optional(),
-  out: z.string().default("./redesigner-artifacts"),
+  out: z.string().default(DEFAULT_ARTIFACTS_DIR),
   maxPages: z.coerce.number().int().positive().max(500).default(25),
   viewport: viewportSchema.prefault("1440x900"),
   headless: z.coerce.boolean().default(true),

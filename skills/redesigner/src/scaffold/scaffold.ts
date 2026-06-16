@@ -8,6 +8,7 @@ import { buildMotionLib } from "./motion-seed.js";
 import type { DesignTokens } from "../capture/tokens.js";
 import { slugFromPathname } from "../util/fs.js";
 import { compareShellSource, originalDataSource } from "./compare-shell.js";
+import { REDESIGN_DIR, APP_SUBDIR } from "../util/paths.js";
 
 export interface ScaffoldOptions {
   out: string;
@@ -62,7 +63,7 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
     {},
   );
 
-  const root = path.resolve(process.cwd(), opts.out, "redesign");
+  const root = path.resolve(process.cwd(), opts.out, REDESIGN_DIR, APP_SUBDIR);
   await emitReactProject(root, tokens, manifest, transitions, anims);
   await copyOriginals(artifactsAbs, root);
   await emitCompareShell(root, manifest);
@@ -357,7 +358,7 @@ npm run dev
 - Base components in \`src/components/\`, page stubs in \`src/pages/\`.
 - Logo: put the redesigned one in \`src/assets/\`.
 
-Complete the components and pages following \`../redesigner-artifacts/reports/redesign-brief.md\`.
+Complete the components and pages following \`../artifacts/reports/redesign-brief.md\`.
 `,
   );
 }
@@ -376,7 +377,7 @@ async function emitCompareShell(
   );
 }
 
-/** Copies html/+assets/+css/ from the survey into redesign/public/_original/. */
+/** Copies html/+assets/+css/ from the survey into redesign/app/public/_original/. */
 async function copyOriginals(artifactsAbs: string, root: string): Promise<void> {
   const dest = path.join(root, "public", "_original");
   for (const dir of ["html", "assets", "css"]) {

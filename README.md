@@ -73,11 +73,11 @@ Neon cyan + magenta on near-black, glowing borders, HUD corner brackets, CRT sca
 9. **Show + iterate** — mandatory gate: the redesign is shown and iterated by prompt **until you approve**, before exporting.
 10. **Exports** (subagent, optional, only after approval) — static HTML mock, **Figma** (`html.to.design` + `tokens.figma.json` for Tokens Studio) and **Pencil** (.pen via MCP).
 
-`redesign/` (the React project) is the **source of truth** for exports.
+`redesign/app/` (the React project) is the **source of truth** for exports.
 
 ### Before/after split (embedded)
 
-The web scaffold ships an **embedded comparator** — `CompareShell` wraps the app, so the running redesign opens on a split between the **original** site (served **offline** from `public/_original/`, copied from the capture's `html/` + `assets/`) and the **real redesign**. The curtain **follows the mouse** by default and can be **pinned** and dragged; scroll and the current view are synced between both sides; **double-click** toggles fullscreen on the new design. No separate artifact — it lives inside `redesign/` and only needs `npm run dev`.
+The web scaffold ships an **embedded comparator** — `CompareShell` wraps the app, so the running redesign opens on a split between the **original** site (served **offline** from `public/_original/`, copied from the capture's `html/` + `assets/`) and the **real redesign**. The curtain **follows the mouse** by default and can be **pinned** and dragged; scroll and the current view are synced between both sides; **double-click** toggles fullscreen on the new design. No separate artifact — it lives inside `redesign/app/` and only needs `npm run dev`.
 
 ### Mobile (native apps)
 
@@ -85,9 +85,9 @@ When the source is a native app, capture runs through **Maestro** instead of Pla
 
 1. **`mobile-doctor`** — checks Maestro / Java / adb and lists attached devices; if no Android device is up, it lists offline **AVDs** with the exact `emulator -avd <name>` command for you to boot one.
 2. **`mobile-inspect`** — dumps the **current** screen's view hierarchy + a screenshot (read-only, no app launch) so Claude reads real labels/ids and authors reliable selectors in one pass.
-3. **`mobile-init-flows`** — seeds an editable Maestro **flow template** (`redesigner-flows/survey.yaml` + a reusable `_screenshot.yaml`).
+3. **`mobile-init-flows`** — seeds an editable Maestro **flow template** (`redesign/flows/survey.yaml` + a reusable `_screenshot.yaml`).
 4. **`mobile-capture`** — drives the app (MANUAL login on the device, READ-ONLY: navigate + screenshot only), one shot per screen, and derives `tokens.json` (palette from pixels) and a header-crop logo. `--watch` opens a live mirror; **`--continuous`** re-runs the flow on every save for fast selector authoring; near-identical consecutive screenshots (splash/loading) are dropped automatically.
-5. **`mobile-scaffold`** — generates `redesign-mobile/` (**React Native + Expo Router + TypeScript**) seeded with the mobile tokens, one screen stub per surveyed screen.
+5. **`mobile-scaffold`** — generates `redesign/mobile/` (**React Native + Expo Router + TypeScript**) seeded with the mobile tokens, one screen stub per surveyed screen.
 
 From there the **shared** steps apply (mock, analysis, UX audit with a mobile lens, questions, build, show/iterate), and the main mobile export target is **Pencil** as phone-sized frames.
 
@@ -111,11 +111,11 @@ cd skills/redesigner
 npm install                 # first time (downloads Chromium)
 
 # Survey (with a visible browser in case there's a manual login)
-npm run capture -- --url https://example.com --out ./redesigner-artifacts --max-pages 25 --no-headless
+npm run capture -- --url https://example.com --out ./redesign/artifacts --max-pages 25 --no-headless
 
 # Scaffold the redesign (React) and, optionally, the HTML mock
-npm run scaffold -- --out . --artifacts ./redesigner-artifacts
-npm run scaffold -- --out . --artifacts ./redesigner-artifacts --target html
+npm run scaffold -- --out . --artifacts ./redesign/artifacts
+npm run scaffold -- --out . --artifacts ./redesign/artifacts --target html
 ```
 
 **`capture` flags:** `--url` (req.), `--login-url`, `--out`, `--max-pages`, `--viewport WxH`, `--no-headless`, `--capture-trace`, `--page-timeout <ms>`.
@@ -133,17 +133,17 @@ npm run mobile-init-flows -- --out . --app <appId> # seed an editable Maestro fl
 
 # Survey the app (MANUAL login on device; --watch opens a live mirror)
 npm run mobile-capture -- --app <appId> --platform android \
-  --flows ./redesigner-flows/survey.yaml --out ./redesigner-artifacts --watch
+  --flows ./redesign/flows/survey.yaml --out ./redesign/artifacts --watch
 
 # Scaffold the mobile redesign (React Native + Expo Router)
-npm run mobile-scaffold -- --out . --artifacts ./redesigner-artifacts
+npm run mobile-scaffold -- --out . --artifacts ./redesign/artifacts
 ```
 
 **`mobile-capture` flags:** `--app` (req.), `--platform android|ios` (req.), `--flows` (req.), `--out`, `--device <udid>`, `--creds <group>`, `--watch`, `--continuous`.
 
 ---
 
-## Artifacts (`redesigner-artifacts/`)
+## Artifacts (`redesign/artifacts/`)
 
 ```text
 manifest.json   preview.html   tokens.json
@@ -253,11 +253,11 @@ Neon cyan + magenta sobre negro, bordes con glow, corner-brackets tipo HUD, scan
 9. **Mostrar + iterar** — gate obligatorio: se muestra el rediseño y se itera por prompt **hasta que apruebes**, antes de exportar.
 10. **Exports** (subagente, opcional, solo tras aprobación) — mock HTML estático, **Figma** (`html.to.design` + `tokens.figma.json` para Tokens Studio) y **Pencil** (.pen vía MCP).
 
-`redesign/` (proyecto React) es la **fuente de verdad** de los exports.
+`redesign/app/` (proyecto React) es la **fuente de verdad** de los exports.
 
 ### Split antes/después (embebido)
 
-El scaffold web trae un **comparador embebido** — `CompareShell` envuelve la app, así el rediseño corriendo abre en un split entre el sitio **original** (servido **offline** desde `public/_original/`, copiado del `html/` + `assets/` de la captura) y el **rediseño real**. La cortina **sigue el mouse** por defecto y se puede **fijar** y arrastrar; el scroll y la vista actual quedan sincronizados entre ambos lados; **doble clic** alterna pantalla completa del nuevo diseño. No es un artefacto aparte — vive dentro de `redesign/` y solo necesita `npm run dev`.
+El scaffold web trae un **comparador embebido** — `CompareShell` envuelve la app, así el rediseño corriendo abre en un split entre el sitio **original** (servido **offline** desde `public/_original/`, copiado del `html/` + `assets/` de la captura) y el **rediseño real**. La cortina **sigue el mouse** por defecto y se puede **fijar** y arrastrar; el scroll y la vista actual quedan sincronizados entre ambos lados; **doble clic** alterna pantalla completa del nuevo diseño. No es un artefacto aparte — vive dentro de `redesign/app/` y solo necesita `npm run dev`.
 
 ### Mobile (apps nativas)
 
@@ -265,9 +265,9 @@ Cuando la fuente es una app nativa, la captura va por **Maestro** en vez de Play
 
 1. **`mobile-doctor`** — chequea Maestro / Java / adb y lista los devices conectados; si no hay device Android arriba, lista los **AVDs** offline con el comando exacto `emulator -avd <nombre>` para que arranques uno.
 2. **`mobile-inspect`** — vuelca la jerarquía de vistas de la pantalla **actual** + un screenshot (solo lectura, sin lanzar la app) para que Claude lea labels/ids reales y arme selectores confiables de una.
-3. **`mobile-init-flows`** — siembra un **template de flow** Maestro editable (`redesigner-flows/survey.yaml` + un `_screenshot.yaml` reutilizable).
+3. **`mobile-init-flows`** — siembra un **template de flow** Maestro editable (`redesign/flows/survey.yaml` + un `_screenshot.yaml` reutilizable).
 4. **`mobile-capture`** — maneja la app (login MANUAL en el device, SOLO LECTURA: solo navega + screenshot), una toma por pantalla, y deriva `tokens.json` (paleta de los píxeles) y un logo recortado del header. `--watch` abre un mirror en vivo; **`--continuous`** re-corre el flow en cada guardado para iterar selectores rápido; los screenshots consecutivos casi idénticos (splash/loading) se descartan solos.
-5. **`mobile-scaffold`** — genera `redesign-mobile/` (**React Native + Expo Router + TypeScript**) sembrado con los tokens mobile, un stub de pantalla por cada pantalla relevada.
+5. **`mobile-scaffold`** — genera `redesign/mobile/` (**React Native + Expo Router + TypeScript**) sembrado con los tokens mobile, un stub de pantalla por cada pantalla relevada.
 
 De ahí en más aplican los pasos **compartidos** (mock, análisis, auditoría UX con lente mobile, preguntas, build, mostrar/iterar), y el target principal de export mobile es **Pencil** como frames de teléfono.
 
@@ -291,11 +291,11 @@ cd skills/redesigner
 npm install                 # primera vez (baja Chromium)
 
 # Relevar (con navegador visible por si hay login manual)
-npm run capture -- --url https://ejemplo.com --out ./redesigner-artifacts --max-pages 25 --no-headless
+npm run capture -- --url https://ejemplo.com --out ./redesign/artifacts --max-pages 25 --no-headless
 
 # Scaffold del rediseño (React) y, opcional, mock HTML
-npm run scaffold -- --out . --artifacts ./redesigner-artifacts
-npm run scaffold -- --out . --artifacts ./redesigner-artifacts --target html
+npm run scaffold -- --out . --artifacts ./redesign/artifacts
+npm run scaffold -- --out . --artifacts ./redesign/artifacts --target html
 ```
 
 **Flags de `capture`:** `--url` (req.), `--login-url`, `--out`, `--max-pages`, `--viewport WxH`, `--no-headless`, `--capture-trace`, `--page-timeout <ms>`.
@@ -313,17 +313,17 @@ npm run mobile-init-flows -- --out . --app <appId> # siembra un template de flow
 
 # Relevar la app (login MANUAL en el device; --watch abre un mirror en vivo)
 npm run mobile-capture -- --app <appId> --platform android \
-  --flows ./redesigner-flows/survey.yaml --out ./redesigner-artifacts --watch
+  --flows ./redesign/flows/survey.yaml --out ./redesign/artifacts --watch
 
 # Scaffold del rediseño mobile (React Native + Expo Router)
-npm run mobile-scaffold -- --out . --artifacts ./redesigner-artifacts
+npm run mobile-scaffold -- --out . --artifacts ./redesign/artifacts
 ```
 
 **Flags de `mobile-capture`:** `--app` (req.), `--platform android|ios` (req.), `--flows` (req.), `--out`, `--device <udid>`, `--creds <group>`, `--watch`, `--continuous`.
 
 ---
 
-## Artefactos (`redesigner-artifacts/`)
+## Artefactos (`redesign/artifacts/`)
 
 ```text
 manifest.json   preview.html   tokens.json

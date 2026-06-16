@@ -2,9 +2,10 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import process from "node:process";
 import { writeFileSafe } from "../util/fs.js";
+import { REDESIGN_DIR, FLOWS_SUBDIR } from "../util/paths.js";
 
 export interface InitFlowsOptions {
-  /** PROJECT dir; flows are seeded under `<out>/redesigner-flows/`. */
+  /** PROJECT dir; flows are seeded under `<out>/redesign/flows/`. */
   out: string;
   /** appId to seed into the flow headers (optional; left as a placeholder if absent). */
   app?: string;
@@ -67,13 +68,13 @@ appId: ${appId}
 }
 
 /**
- * Seed `<out>/redesigner-flows/` with an editable survey flow + a reusable screenshot
+ * Seed `<out>/redesign/flows/` with an editable survey flow + a reusable screenshot
  * subflow, so the agent edits a ready template instead of hand-writing boilerplate. Never
  * overwrites existing flows (they may hold the user's authored navigation).
  */
 export async function runMobileInitFlows(opts: InitFlowsOptions): Promise<void> {
   const appId = opts.app && opts.app.trim() ? opts.app.trim() : "<APP_ID>";
-  const flowsDir = path.resolve(process.cwd(), opts.out, "redesigner-flows");
+  const flowsDir = path.resolve(process.cwd(), opts.out, REDESIGN_DIR, FLOWS_SUBDIR);
 
   const files: { rel: string; content: string }[] = [
     { rel: "_screenshot.yaml", content: screenshotSubflow(appId) },

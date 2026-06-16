@@ -1,5 +1,6 @@
 import path from "node:path";
 import { z } from "zod";
+import { DEFAULT_ARTIFACTS_DIR } from "../util/paths.js";
 
 /**
  * Configuration for the `mobile-capture` command. Like the web `capture`, there is NO
@@ -13,7 +14,7 @@ export const mobileFlagsSchema = z.object({
   flows: z
     .string()
     .min(1, "--flows <path> is required (a .yaml Maestro flow or a directory of flows)"),
-  out: z.string().default("./redesigner-artifacts"),
+  out: z.string().default(DEFAULT_ARTIFACTS_DIR),
   device: z.string().default("auto"),
   creds: z.string().optional(),
   watch: z.coerce.boolean().default(false),
