@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { buildCaptureConfig, formatConfigError } from "../src/config.js";
 import { log } from "../src/util/log.js";
+import { DEFAULT_ARTIFACTS_DIR, REDESIGN_DIR, FLOWS_SUBDIR } from "../src/util/paths.js";
 
 const program = new Command();
 
@@ -16,7 +17,7 @@ program
   .description("Logs in, crawls (non-destructive) and saves the site's artifacts.")
   .requiredOption("--url <url>", "URL of the site to survey")
   .option("--login-url <url>", "login URL if it differs from --url")
-  .option("--out <dir>", "output directory", "./redesigner-artifacts")
+  .option("--out <dir>", "output directory", DEFAULT_ARTIFACTS_DIR)
   .option("--max-pages <n>", "maximum number of pages to crawl", "25")
   .option("--viewport <WxH>", "viewport size", "1440x900")
   .option("--no-headless", "open the browser (required if the site asks for login: it is manual)")
@@ -62,7 +63,7 @@ program
   .command("mobile-inspect")
   .description("Dumps the CURRENT screen's view hierarchy + a screenshot (read-only, no app launch) so you can author reliable selectors.")
   .requiredOption("--platform <platform>", "android | ios")
-  .option("--out <dir>", "output directory", "./redesigner-artifacts")
+  .option("--out <dir>", "output directory", DEFAULT_ARTIFACTS_DIR)
   .option("--device <udid>", "device/emulator udid", "auto")
   .action(async (opts) => {
     try {
@@ -83,7 +84,7 @@ program
   .requiredOption("--app <appId>", "Android package / iOS bundleId of the app to survey")
   .requiredOption("--platform <platform>", "android | ios")
   .requiredOption("--flows <path>", "a .yaml Maestro flow or a directory of flows")
-  .option("--out <dir>", "output directory", "./redesigner-artifacts")
+  .option("--out <dir>", "output directory", DEFAULT_ARTIFACTS_DIR)
   .option("--device <udid>", "device/emulator udid", "auto")
   .option("--creds <group>", "credential group from .qa.secrets.json (optional, injected as --env)")
   .option("--watch", "open the live mirror (scrcpy/Simulator) for the human", false)
@@ -111,8 +112,8 @@ program
 
 program
   .command("mobile-init-flows")
-  .description("Seeds redesigner-flows/ with an editable survey flow + a reusable screenshot subflow.")
-  .option("--out <dir>", "project directory (flows go under <out>/redesigner-flows/)", ".")
+  .description(`Seeds ${REDESIGN_DIR}/${FLOWS_SUBDIR}/ with an editable survey flow + a reusable screenshot subflow.`)
+  .option("--out <dir>", `project directory (flows go under <out>/${REDESIGN_DIR}/${FLOWS_SUBDIR}/)`, ".")
   .option("--app <appId>", "appId to seed into the flow headers (optional)")
   .action(async (opts) => {
     try {
@@ -127,8 +128,8 @@ program
 program
   .command("mobile-scaffold")
   .description("Generates the mobile redesign base (React Native + Expo Router) seeded with the mobile tokens.")
-  .requiredOption("--out <dir>", "project directory (where redesigner-artifacts lives)")
-  .option("--artifacts <dir>", "artifacts directory", "./redesigner-artifacts")
+  .requiredOption("--out <dir>", `project directory (the redesign lives under <out>/${REDESIGN_DIR}/)`)
+  .option("--artifacts <dir>", "artifacts directory", DEFAULT_ARTIFACTS_DIR)
   .action(async (opts) => {
     try {
       const { runMobileScaffold } = await import("../src/mobile/scaffold.js");
@@ -142,11 +143,11 @@ program
 program
   .command("scaffold")
   .description("Generates the redesign's base project (React + Tailwind + motion).")
-  .requiredOption("--out <dir>", "project directory (where redesigner-artifacts lives)")
+  .requiredOption("--out <dir>", `project directory (the redesign lives under <out>/${REDESIGN_DIR}/)`)
   .option(
     "--artifacts <dir>",
     "artifacts directory",
-    "./redesigner-artifacts",
+    DEFAULT_ARTIFACTS_DIR,
   )
   .option("--target <target>", "react | html", "react")
   .action(async (opts) => {

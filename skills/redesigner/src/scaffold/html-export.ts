@@ -4,6 +4,7 @@ import { log } from "../util/log.js";
 import { tokensToThemeCss } from "./theme.js";
 import { tokensToFigma } from "./figma-tokens.js";
 import type { DesignTokens } from "../capture/tokens.js";
+import { REDESIGN_DIR, HTML_SUBDIR } from "../util/paths.js";
 
 export interface HtmlExportOptions {
   out: string;
@@ -17,7 +18,7 @@ export interface HtmlExportOptions {
  * importing into Figma with the html.to.design plugin. It also emits tokens.figma.json.
  */
 export async function exportHtmlMock(opts: HtmlExportOptions): Promise<void> {
-  const root = path.resolve(process.cwd(), opts.out, "redesign-html");
+  const root = path.resolve(process.cwd(), opts.out, REDESIGN_DIR, HTML_SUBDIR);
   const theme = tokensToThemeCss(opts.tokens);
 
   const html = `<!doctype html>
